@@ -1,11 +1,13 @@
 """Main entry point for OfficeAI Prompt Project"""
 
-from src.oipromot import __version__
+import uvicorn
+from src.oipromot.app import app
+from src.oipromot.database import create_db_and_tables
 
 
 def main():
-    print(f"OfficeAI Prompt Tool v{__version__}")
-    print("Ready to process prompts...")
+    create_db_and_tables()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":
