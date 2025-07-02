@@ -77,6 +77,94 @@ class PromptOptimizer:
         
         return "; ".join(key_info) if key_info else ""
     
+    def _get_domain_specific_guidance(self, capability_reason: str, is_chinese: bool) -> str:
+        """Generate domain-specific guidance based on the type of fuzzy task."""
+        guidance_templates = {
+            "complex_data_cleaning": {
+                "chinese": """
+🔧 数据清理专项指导：
+• 数据标准化：统一格式、编码、命名约定
+• 重复项处理：识别并合并相似记录
+• 缺失值策略：填充、插值或标记处理
+• 异常值检测：识别并处理超出正常范围的数据
+• 一致性检查：确保跨字段的数据逻辑一致性""",
+                "english": """
+🔧 Data Cleaning Specialized Guidance:
+• Data Standardization: Unify formats, encoding, naming conventions
+• Duplicate Handling: Identify and merge similar records
+• Missing Value Strategy: Fill, interpolate, or flag for processing
+• Outlier Detection: Identify and handle data outside normal ranges
+• Consistency Checks: Ensure logical consistency across fields"""
+            },
+            "intelligent_extraction": {
+                "chinese": """
+🔍 智能提取专项指导：
+• 模式识别：识别数据中的隐藏模式和结构
+• 实体抽取：从文本中提取人名、地址、日期等
+• 关系映射：建立数据元素之间的逻辑关系
+• 上下文理解：基于语境推断缺失或模糊信息
+• 语义分析：理解文本内容的深层含义""",
+                "english": """
+🔍 Intelligent Extraction Specialized Guidance:
+• Pattern Recognition: Identify hidden patterns and structures in data
+• Entity Extraction: Extract names, addresses, dates from text
+• Relationship Mapping: Establish logical relationships between data elements
+• Context Understanding: Infer missing or ambiguous information from context
+• Semantic Analysis: Understand deeper meaning of text content"""
+            },
+            "contextual_processing": {
+                "chinese": """
+🧠 上下文处理专项指导：
+• 语境分析：理解数据在特定环境中的含义
+• 歧义消解：基于上下文确定多义词的正确含义
+• 推理补全：根据已知信息推断缺失部分
+• 文化适应：处理不同文化背景下的数据差异
+• 动态适应：根据数据特点调整处理策略""",
+                "english": """
+🧠 Contextual Processing Specialized Guidance:
+• Context Analysis: Understand data meaning in specific environments
+• Ambiguity Resolution: Determine correct meaning based on context
+• Inference Completion: Infer missing parts from known information
+• Cultural Adaptation: Handle data differences across cultural backgrounds
+• Dynamic Adaptation: Adjust processing strategy based on data characteristics"""
+            },
+            "adaptive_tasks": {
+                "chinese": """
+🔄 自适应处理专项指导：
+• 灵活规则：根据数据特点动态调整处理规则
+• 例外处理：为特殊情况设计专门的处理逻辑
+• 学习适应：从处理结果中学习并优化策略
+• 渐进处理：分步骤处理复杂任务，逐步完善
+• 反馈循环：基于验证结果调整处理方法""",
+                "english": """
+🔄 Adaptive Processing Specialized Guidance:
+• Flexible Rules: Dynamically adjust processing rules based on data characteristics
+• Exception Handling: Design specialized logic for special cases
+• Learning Adaptation: Learn from processing results and optimize strategy
+• Progressive Processing: Handle complex tasks step-by-step, gradually refine
+• Feedback Loop: Adjust processing methods based on validation results"""
+            },
+            "reasoning_required": {
+                "chinese": """
+🤔 推理决策专项指导：
+• 逻辑推理：基于已知事实进行逻辑推导
+• 权重评估：为不同判断标准分配合理权重
+• 决策树：构建系统化的决策流程
+• 不确定性处理：在信息不完整时做出最佳判断
+• 置信度评估：为每个决策提供可信度评分""",
+                "english": """
+🤔 Reasoning & Decision Specialized Guidance:
+• Logical Reasoning: Perform logical deduction based on known facts
+• Weight Assessment: Assign reasonable weights to different judgment criteria
+• Decision Tree: Build systematic decision-making processes
+• Uncertainty Handling: Make optimal judgments with incomplete information
+• Confidence Assessment: Provide confidence scores for each decision"""
+            }
+        }
+        
+        template = guidance_templates.get(capability_reason, {})
+        return template.get("chinese" if is_chinese else "english", "")
+    
     def _validate_information_preservation(self, original_input: str, optimized_response: str) -> bool:
         """Validate that optimized response preserves core information from original input."""
         original_lower = original_input.lower()
@@ -147,40 +235,97 @@ class PromptOptimizer:
             
             target_model_info = self.model_types[self.target_model_type]
             
-            # Special handling for fuzzy AI tasks
+            # Special handling for fuzzy AI tasks using Structured Data Analysis Framework
             if capability.recommendation == "FUZZY_AI":
                 full_prompt = f"""
-You are an OfficeAI assistant with advanced natural language processing capabilities for complex Office automation tasks.
+You are an OfficeAI assistant with advanced analytical capabilities for complex data processing tasks.
 
-SPECIAL MODE: FUZZY/INTELLIGENT PROCESSING DETECTED
+🧠 STRUCTURED DATA ANALYSIS FRAMEWORK (SDAF) MODE ACTIVATED
 Task Type: {capability.reason}
 Target Model: {target_model_info['name']}
 
-FUZZY AI INSTRUCTIONS:
-- Use your natural language understanding and reasoning abilities
-- Apply intelligent data cleaning, pattern recognition, and contextual processing
-- Handle inconsistent, messy, or complex data that requires human-like interpretation
-- Provide adaptive solutions that can handle case-by-case variations
-- When data is ambiguous, use context clues and semantic understanding
+📋 FOLLOW THIS SYSTEMATIC FRAMEWORK:
 
-1. App Selection: Use "0=Word, 1=Excel" format
-2. Fuzzy Task Categories:
-   - Intelligent data cleaning → Use AI reasoning to standardize messy data
-   - Contextual extraction → Understand meaning and context, not just patterns
-   - Adaptive processing → Flexible solutions that adapt to data variations
-   - Complex reasoning → Multi-step logical processing
+🔍 PHASE 1: DATA DISCOVERY & ASSESSMENT
+STEP 1: Data Structure Analysis
+- Examine input data format (Excel, CSV, text, mixed)
+- Identify data types (text, numbers, dates, mixed)
+- Detect patterns, delimiters, and structure inconsistencies
+- Note missing values, special characters, edge cases
 
-Rules:
-- CRITICAL: Respond in SAME LANGUAGE as current request (Chinese→Chinese, English→English)
-- Use your natural abilities for data understanding and processing
-- Provide intelligent, context-aware solutions
-- Explain your reasoning process when handling complex/ambiguous data
-- Adjust detail level for target model: {self.target_model_type} model needs {target_model_info['max_detail']} detail
+STEP 2: Complexity Assessment
+- SIMPLE: Consistent structure, clean data → Use direct automation
+- MEDIUM: Some inconsistencies, multiple formats → Use guided processing
+- COMPLEX: Mixed structures, messy text → Use AI reasoning
+- FUZZY: Requires interpretation and context → Use full AI capabilities
+
+🎯 PHASE 2: PROCESSING STRATEGY DESIGN
+STEP 3: Choose Processing Approach
+- Direct automation (VBA/formulas) for consistent data
+- AI reasoning for inconsistent/contextual data
+- Hybrid approach for mixed complexity scenarios
+
+STEP 4: Text Processing Strategy
+TEXT STRUCTURE HANDLING:
+- Structured text → Pattern matching/regex approach
+- Semi-structured → AI interpretation + validation rules
+- Unstructured → Full natural language processing
+- Mixed formats → Adaptive processing per data case
+
+⚙️ PHASE 3: IMPLEMENTATION GUIDANCE
+STEP 5: Systematic Processing
+A. READ & PARSE:
+   1. Sample data to understand patterns and variations
+   2. Identify edge cases and exception scenarios
+   3. Plan comprehensive error handling strategy
+
+B. PROCESS & TRANSFORM:
+   1. Apply consistent rules where data allows
+   2. Use AI reasoning for ambiguous/contextual cases
+   3. Validate results continuously and handle exceptions
+
+C. OUTPUT & VERIFY:
+   1. Format results with consistent structure
+   2. Perform data integrity checks
+   3. Provide detailed processing summary
+
+📝 PHASE 4: SPECIALIZED TEXT HANDLING GUIDES
+
+FOR NAME/CONTACT DATA:
+- Handle formats: "Last, First" vs "First Last" vs "Title First Last, Suffix"
+- Process titles, suffixes, special characters, cultural variations
+- Normalize spacing, capitalization, and punctuation
+
+FOR ADDRESS DATA:
+- Parse: "123 Main St, City, State ZIP" vs "Street\\nCity State ZIP"
+- Handle abbreviations: "St/Street", "Ave/Avenue", "Rd/Road"
+- Extract components: street number, name, unit, city, state, postal code
+
+FOR MIXED CONTENT:
+- Identify content types within single text fields
+- Separate structured from unstructured information
+- Apply appropriate processing methodology to each part
+
+FOR INCONSISTENT DATA:
+- Use contextual clues to interpret user intent
+- Apply fuzzy matching algorithms for similar entries
+- Flag uncertain cases for manual review/verification
+
+🎯 CRITICAL EXECUTION RULES:
+- LANGUAGE: Respond in SAME LANGUAGE as request (Chinese→Chinese, English→English)
+- METHODOLOGY: Follow SDAF phases systematically
+- REASONING: Explain your analytical process and decisions
+- ADAPTATION: Adjust complexity based on target model: {self.target_model_type} needs {target_model_info['max_detail']} detail
+- VALIDATION: Always verify results and provide confidence levels
+
+App Selection Format: "0=Word, 1=Excel"
 
 {context}
-Current fuzzy/complex request: {user_input}
+Current complex data task: {user_input}
 
-Response using AI natural abilities IN SAME LANGUAGE:"""
+{self._get_domain_specific_guidance(capability.reason, any('\u4e00' <= char <= '\u9fff' for char in user_input))}
+
+RESPOND using SDAF methodology IN SAME LANGUAGE with systematic analysis:"""
             else:
                 full_prompt = f"""
 You are an OfficeAI assistant for Word and Excel automation. Strategy:
@@ -341,11 +486,73 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                 else:  # HYBRID
                     return "App: 0=Word, 1=Excel\\n🔀Hybrid approach: AI for content + VBA for execution\\nDescribe specific task to determine best approach"
         
-        # Default capability-based recommendation
+        # Default capability-based recommendation with Structured Data Analysis Framework
         if capability.recommendation == "FUZZY_AI":
             if is_chinese:
-                return f"{user_task_prefix}应用选择：0=Word, 1=Excel\\n🧠智能处理任务：{capability.reason}\\n\\n💡建议：使用AI的自然能力进行：\\n- 智能数据清理和标准化\\n- 上下文理解和内容提取\\n- 复杂模式识别和推理\\n- 灵活适应性处理\\n\\n请详细描述数据特点和处理需求"
-            return f"{user_task_prefix}App: 0=Word, 1=Excel\\n🧠Intelligent Processing: {capability.reason}\\n\\n💡Recommendation: Use AI's natural abilities for:\\n- Intelligent data cleaning and normalization\\n- Contextual understanding and content extraction\\n- Complex pattern recognition and reasoning\\n- Flexible adaptive processing\\n\\nPlease describe data characteristics and processing requirements in detail"
+                return f"""{user_task_prefix}应用选择：0=Word, 1=Excel
+🧠 结构化数据分析框架(SDAF)模式：{capability.reason}
+
+📋 请按以下系统化流程进行：
+
+🔍 阶段1：数据发现与评估
+- 分析数据格式和结构（Excel、CSV、文本、混合）
+- 识别数据类型和不一致性
+- 评估复杂程度（简单/中等/复杂/模糊）
+
+🎯 阶段2：处理策略设计  
+- 选择处理方法（直接自动化/AI推理/混合方式）
+- 制定文本处理策略（结构化/半结构化/非结构化）
+
+⚙️ 阶段3：实施指导
+- 读取解析：样本数据，识别边界情况
+- 处理转换：应用规则，AI推理处理歧义
+- 输出验证：格式化结果，数据完整性检查
+
+📝 阶段4：专门文本处理
+- 姓名/联系人：处理各种格式和文化差异
+- 地址数据：解析不同格式，处理缩写
+- 混合内容：分离结构化和非结构化部分
+- 不一致数据：使用上下文线索，模糊匹配
+
+💡 请详细描述：
+1. 数据的具体特点和结构
+2. 期望的处理结果
+3. 遇到的具体问题或挑战
+
+{self._get_domain_specific_guidance(capability.reason, True)}"""
+            
+            domain_guidance = self._get_domain_specific_guidance(capability.reason, False)
+            return f"""{user_task_prefix}App: 0=Word, 1=Excel
+🧠 Structured Data Analysis Framework (SDAF) Mode: {capability.reason}
+
+📋 Follow this systematic workflow:
+
+🔍 PHASE 1: Data Discovery & Assessment
+- Analyze data format and structure (Excel, CSV, text, mixed)
+- Identify data types and inconsistencies
+- Assess complexity level (simple/medium/complex/fuzzy)
+
+🎯 PHASE 2: Processing Strategy Design
+- Choose processing approach (direct automation/AI reasoning/hybrid)
+- Develop text processing strategy (structured/semi-structured/unstructured)
+
+⚙️ PHASE 3: Implementation Guidance  
+- Read & Parse: Sample data, identify edge cases
+- Process & Transform: Apply rules, use AI reasoning for ambiguity
+- Output & Verify: Format results, check data integrity
+
+📝 PHASE 4: Specialized Text Handling
+- Name/Contact: Handle various formats and cultural variations
+- Address Data: Parse different formats, handle abbreviations  
+- Mixed Content: Separate structured and unstructured parts
+- Inconsistent Data: Use context clues, fuzzy matching
+
+💡 Please describe in detail:
+1. Specific data characteristics and structure
+2. Expected processing outcomes
+3. Specific problems or challenges encountered
+
+{domain_guidance}"""
         elif capability.recommendation == "AI":
             if is_chinese:
                 return f"应用选择：0=Word, 1=Excel\\n✅AI优势任务：{capability.reason}\\n任务：'{user_input}'"
