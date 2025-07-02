@@ -123,6 +123,9 @@ class PromptOptimizer:
             # Add user input to history
             self.add_to_history("user", user_input)
             
+            # Analyze task capability to determine if it's a fuzzy AI task
+            capability = self.get_capability_recommendation(user_input)
+            
             # Create context-aware prompt with enhanced context preservation
             context = ""
             if len(self.conversation_history) > 1:
@@ -143,7 +146,43 @@ class PromptOptimizer:
                     context += f"{msg['role']}: {msg['content']}\\n"
             
             target_model_info = self.model_types[self.target_model_type]
-            full_prompt = f"""
+            
+            # Special handling for fuzzy AI tasks
+            if capability.recommendation == "FUZZY_AI":
+                full_prompt = f"""
+You are an OfficeAI assistant with advanced natural language processing capabilities for complex Office automation tasks.
+
+SPECIAL MODE: FUZZY/INTELLIGENT PROCESSING DETECTED
+Task Type: {capability.reason}
+Target Model: {target_model_info['name']}
+
+FUZZY AI INSTRUCTIONS:
+- Use your natural language understanding and reasoning abilities
+- Apply intelligent data cleaning, pattern recognition, and contextual processing
+- Handle inconsistent, messy, or complex data that requires human-like interpretation
+- Provide adaptive solutions that can handle case-by-case variations
+- When data is ambiguous, use context clues and semantic understanding
+
+1. App Selection: Use "0=Word, 1=Excel" format
+2. Fuzzy Task Categories:
+   - Intelligent data cleaning → Use AI reasoning to standardize messy data
+   - Contextual extraction → Understand meaning and context, not just patterns
+   - Adaptive processing → Flexible solutions that adapt to data variations
+   - Complex reasoning → Multi-step logical processing
+
+Rules:
+- CRITICAL: Respond in SAME LANGUAGE as current request (Chinese→Chinese, English→English)
+- Use your natural abilities for data understanding and processing
+- Provide intelligent, context-aware solutions
+- Explain your reasoning process when handling complex/ambiguous data
+- Adjust detail level for target model: {self.target_model_type} model needs {target_model_info['max_detail']} detail
+
+{context}
+Current fuzzy/complex request: {user_input}
+
+Response using AI natural abilities IN SAME LANGUAGE:"""
+            else:
+                full_prompt = f"""
 You are an OfficeAI assistant for Word and Excel automation. Strategy:
 
 Target Model: {target_model_info['name']}
@@ -303,7 +342,11 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                     return "App: 0=Word, 1=Excel\\n🔀Hybrid approach: AI for content + VBA for execution\\nDescribe specific task to determine best approach"
         
         # Default capability-based recommendation
-        if capability.recommendation == "AI":
+        if capability.recommendation == "FUZZY_AI":
+            if is_chinese:
+                return f"{user_task_prefix}应用选择：0=Word, 1=Excel\\n🧠智能处理任务：{capability.reason}\\n\\n💡建议：使用AI的自然能力进行：\\n- 智能数据清理和标准化\\n- 上下文理解和内容提取\\n- 复杂模式识别和推理\\n- 灵活适应性处理\\n\\n请详细描述数据特点和处理需求"
+            return f"{user_task_prefix}App: 0=Word, 1=Excel\\n🧠Intelligent Processing: {capability.reason}\\n\\n💡Recommendation: Use AI's natural abilities for:\\n- Intelligent data cleaning and normalization\\n- Contextual understanding and content extraction\\n- Complex pattern recognition and reasoning\\n- Flexible adaptive processing\\n\\nPlease describe data characteristics and processing requirements in detail"
+        elif capability.recommendation == "AI":
             if is_chinese:
                 return f"应用选择：0=Word, 1=Excel\\n✅AI优势任务：{capability.reason}\\n任务：'{user_input}'"
             return f"App: 0=Word, 1=Excel\\n✅AI Strength: {capability.reason}\\nTask: '{user_input}'"

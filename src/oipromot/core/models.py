@@ -43,9 +43,10 @@ class OptimizationSession(SQLModel, table=True):
 class CapabilityRecommendation:
     """Data class for capability recommendations."""
     
-    def __init__(self, recommendation: str, reason: str, ai_score: int, vba_score: int, is_chinese: bool):
+    def __init__(self, recommendation: str, reason: str, ai_score: int, vba_score: int, fuzzy_score: int = 0, is_chinese: bool = False):
         self.recommendation = recommendation
         self.reason = reason
         self.ai_score = ai_score
         self.vba_score = vba_score
+        self.fuzzy_score = fuzzy_score
         self.is_chinese = is_chinese
