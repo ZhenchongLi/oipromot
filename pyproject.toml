@@ -17,13 +17,13 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "orjson>=3.9.0",
+    "httpx>=0.25.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
-    "httpx>=0.25.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
@@ -48,3 +48,12 @@ select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "COM", "C4", "DTZ", "T
 ignore = ["ANN101", "ANN102", "COM812", "ISC001"]
 line-length = 88
 target-version = "py313"
+
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+default = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
