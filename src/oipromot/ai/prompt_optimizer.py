@@ -53,6 +53,66 @@ class PromptOptimizer:
         """Add message to conversation history."""
         self.conversation_history.append({"role": role, "content": content})
     
+    def _extract_key_information(self, messages: List[Dict[str, str]]) -> str:
+        """Extract key information from earlier messages to preserve important context."""
+        key_info = []
+        
+        for msg in messages:
+            content = msg['content'].lower()
+            role = msg['role']
+            
+            # Extract important keywords and patterns
+            if role == 'user':
+                # Look for task requirements, constraints, specific needs
+                if any(keyword in content for keyword in ['requirement', 'need', 'must', 'should', 'requirement']):
+                    key_info.append(f"Requirement: {msg['content'][:100]}...")
+                elif any(keyword in content for keyword in ['error', 'problem', 'issue', 'bug']):
+                    key_info.append(f"Issue: {msg['content'][:100]}...")
+                elif any(keyword in content for keyword in ['target', 'goal', 'objective', 'purpose']):
+                    key_info.append(f"Goal: {msg['content'][:100]}...")
+            elif role == 'assistant':
+                # Look for important decisions or recommendations
+                if any(keyword in content for keyword in ['recommend', 'suggest', 'solution', 'approach']):
+                    key_info.append(f"Recommendation: {msg['content'][:100]}...")
+        
+        return "; ".join(key_info) if key_info else ""
+    
+    def _validate_information_preservation(self, original_input: str, optimized_response: str) -> bool:
+        """Validate that optimized response preserves core information from original input."""
+        original_lower = original_input.lower()
+        response_lower = optimized_response.lower()
+        
+        # Extract key elements from original input
+        key_elements = []
+        
+        # Check for specific tools/applications mentioned
+        apps = ["word", "excel", "powerpoint", "office", "文档", "表格", "演示"]
+        mentioned_apps = [app for app in apps if app in original_lower]
+        key_elements.extend(mentioned_apps)
+        
+        # Check for action verbs (what user wants to do)
+        actions = ["create", "generate", "write", "format", "calculate", "extract", "split", "convert", 
+                  "automate", "batch", "process", "analyze", "创建", "生成", "写", "格式", "计算", "提取", 
+                  "拆分", "转换", "自动化", "批处理", "处理", "分析"]
+        mentioned_actions = [action for action in actions if action in original_lower]
+        key_elements.extend(mentioned_actions)
+        
+        # Check for specific data types or objects
+        objects = ["table", "chart", "document", "file", "data", "text", "number", "date", "image", 
+                  "表格", "图表", "文档", "文件", "数据", "文本", "数字", "日期", "图片"]
+        mentioned_objects = [obj for obj in objects if obj in original_lower]
+        key_elements.extend(mentioned_objects)
+        
+        # Check preservation rate
+        if not key_elements:
+            return True  # No specific elements to validate
+            
+        preserved_count = sum(1 for element in key_elements if element in response_lower)
+        preservation_rate = preserved_count / len(key_elements)
+        
+        # Consider it valid if at least 70% of key elements are preserved
+        return preservation_rate >= 0.7
+    
     def get_capability_recommendation(self, user_input: str) -> CapabilityRecommendation:
         """Get AI vs VBA capability recommendation for the task."""
         return self.analyzer.analyze_task(user_input)
@@ -63,11 +123,23 @@ class PromptOptimizer:
             # Add user input to history
             self.add_to_history("user", user_input)
             
-            # Create context-aware prompt for DeepSeek
+            # Create context-aware prompt with enhanced context preservation
             context = ""
             if len(self.conversation_history) > 1:
                 context = "\\nPrevious conversation:\\n"
-                for msg in self.conversation_history[-4:]:  # Last 4 messages for context
+                # Use last 10 messages for better context preservation
+                recent_messages = self.conversation_history[-10:]
+                
+                # If conversation is very long, include a summary of earlier context
+                if len(self.conversation_history) > 10:
+                    earlier_messages = self.conversation_history[:-10]
+                    # Extract key information from earlier messages
+                    key_info = self._extract_key_information(earlier_messages)
+                    if key_info:
+                        context += f"Earlier context summary: {key_info}\\n\\n"
+                
+                # Add recent messages with full detail
+                for msg in recent_messages:
                     context += f"{msg['role']}: {msg['content']}\\n"
             
             target_model_info = self.model_types[self.target_model_type]
@@ -100,8 +172,17 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                 try:
                     result = await self.ai_service.process_message(full_prompt)
                     if result:
-                        self.add_to_history("assistant", result)
-                        return result
+                        # Validate information preservation
+                        if self._validate_information_preservation(user_input, result):
+                            self.add_to_history("assistant", result)
+                            return result
+                        else:
+                            # Information loss detected, enhance with fallback
+                            print(f"⚠️  Information loss detected in AI response, enhancing...")
+                            fallback_result = self._generate_smart_response(user_input)
+                            enhanced_result = f"{result}\\n\\n📝 Enhanced context: {fallback_result}"
+                            self.add_to_history("assistant", enhanced_result)
+                            return enhanced_result
                 except Exception as ai_error:
                     # Log AI error but continue to fallback
                     print(f"⚠️  AI service error, using fallback: {ai_error}")
@@ -115,9 +196,12 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
             return f"Error: {e}"
     
     def _generate_smart_response(self, user_input: str) -> str:
-        """Generate smart mock response with capability-based recommendations."""
+        """Generate smart mock response with enhanced context preservation."""
         user_lower = user_input.lower()
         is_chinese = any('\u4e00' <= char <= '\u9fff' for char in user_input)
+        
+        # Preserve user intent by including their exact request in the response
+        # This ensures no information is lost even in fallback mode
         
         # Handle model selection commands
         if user_input.lower() in ['/mb', '/model-big']:
@@ -144,8 +228,11 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
         return self._generate_capability_based_response(user_input, capability, is_chinese)
     
     def _generate_capability_based_response(self, user_input: str, capability: CapabilityRecommendation, is_chinese: bool) -> str:
-        """Generate response based on capability analysis."""
+        """Generate response based on capability analysis with preserved user context."""
         user_lower = user_input.lower()
+        
+        # Create a prefix that includes the user's original request to preserve context
+        user_task_prefix = f"Task: '{user_input}'\\n\\n" if len(user_input) < 100 else f"Task: '{user_input[:97]}...'\\n\\n"
         
         # Content generation tasks
         content_keywords = ["write", "generate", "create content", "draft", "letter", "report", "document", 
@@ -155,20 +242,20 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                 if capability.recommendation == "AI":
                     base_msg = "应用选择：0=Word, 1=Excel\\n✅AI优势任务：内容创作"
                     if self.target_model_type == "small":
-                        return f"{base_msg}\\n需要详细提示：具体主题、字数要求、格式规范、目标受众"
+                        return f"{user_task_prefix}{base_msg}\\n需要详细提示：具体主题、字数要求、格式规范、目标受众"
                     else:
-                        return f"{base_msg}\\n简要描述主题和类型即可"
+                        return f"{user_task_prefix}{base_msg}\\n简要描述主题和类型即可"
                 else:
-                    return "应用选择：0=Word, 1=Excel\\n内容生成→Word，请提供更多细节"
+                    return f"{user_task_prefix}应用选择：0=Word, 1=Excel\\n内容生成→Word，请提供更多细节"
             else:
                 if capability.recommendation == "AI":
                     base_msg = "App: 0=Word, 1=Excel\\n✅AI Strength: Content creation"
                     if self.target_model_type == "small":
-                        return f"{base_msg}\\nNeed detailed prompt: specific topic, word count, format specs, target audience"
+                        return f"{user_task_prefix}{base_msg}\\nNeed detailed prompt: specific topic, word count, format specs, target audience"
                     else:
-                        return f"{base_msg}\\nBrief topic and type description sufficient"
+                        return f"{user_task_prefix}{base_msg}\\nBrief topic and type description sufficient"
                 else:
-                    return "App: 0=Word, 1=Excel\\nContent generation → Word. Provide more details"
+                    return f"{user_task_prefix}App: 0=Word, 1=Excel\\nContent generation → Word. Provide more details"
         
         # Specific data processing tasks (ID card, birthday, age calculation, text splitting)
         data_keywords = ["身份证", "生日", "年龄", "提取", "计算", "出生", "拆分", "分离", "分割", "姓名", "电话", 

@@ -59,7 +59,7 @@ class OpenAIProvider(AIProvider):
                     {"role": "user", "content": message.strip()}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 1000
+                "max_tokens": 2000
             }
             
             url = f"{self.settings.ai_base_url}/chat/completions"
@@ -130,7 +130,7 @@ class DeepSeekProvider(AIProvider):
                     {"role": "user", "content": message.strip()}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 1000
+                "max_tokens": 2000
             }
             
             url = f"{self.settings.ai_base_url}/chat/completions"
