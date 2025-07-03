@@ -5,8 +5,8 @@ Command-line interface entry points for OiPromot.
 
 import sys
 import argparse
-from src.oipromot.cli.interactive import InteractiveCLI
-from src.oipromot.cli.simple import SimpleCLI
+from oipromot.cli.interactive import InteractiveCLI
+from oipromot.cli.simple import SimpleCLI
 
 
 def main():
@@ -21,7 +21,6 @@ Examples:
   python cli.py --help         # Show this help message
         """
     )
-    
     parser.add_argument(
         'mode',
         choices=['interactive', 'simple'],
@@ -29,9 +28,9 @@ Examples:
         default='interactive',
         help='CLI mode to run (default: interactive)'
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
         if args.mode == 'interactive':
             cli = InteractiveCLI()

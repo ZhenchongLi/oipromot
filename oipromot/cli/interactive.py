@@ -25,7 +25,7 @@ class InteractiveCLI(BaseCLI):
         
         current_model = self.optimizer.model_types[self.optimizer.target_model_type]["name"]
         self.display_info(f"Target Model: {current_model}")
-        self.display_info("Commands: /q=quit, /e=exit, /c=clear, /mb=big model, /ms=small model\n")
+        self.display_info("Commands: /q=quit, /e=exit, /c=clear, /t=template, /l=list, /mb=big model, /ms=small model\n")
         
         while True:
             try:
@@ -38,6 +38,19 @@ class InteractiveCLI(BaseCLI):
                 if self._is_clear_command(user_input):
                     response = self.optimizer.clear_conversation()
                     self.display_success(response)
+                    continue
+
+                if self._is_list_command(user_input):
+                    response = self.optimizer.list_templates()
+                    self.display_info(response)
+                    continue
+
+                if self._is_template_command(user_input):
+                    template_name = self.get_user_input("📄 Template name: ")
+                    prompt_input = self.get_user_input("📝 Your request: ")
+                    response = asyncio.run(self.optimizer.process_with_template(prompt_input, template_name))
+                    formatted_response = response.replace('\\n', '\n')
+                    print(f"🤖 {formatted_response}\n")
                     continue
                 
                 if not user_input:
@@ -63,3 +76,11 @@ class InteractiveCLI(BaseCLI):
     def _is_clear_command(self, user_input: str) -> bool:
         """Check if user input is a clear command."""
         return user_input.lower() in ['/c', '/clear']
+
+    def _is_template_command(self, user_input: str) -> bool:
+        """Check if user input is a template command."""
+        return user_input.lower() in ['/t', '/template']
+
+    def _is_list_command(self, user_input: str) -> bool:
+        """Check if user input is a list command."""
+        return user_input.lower() in ['/l', '/list']

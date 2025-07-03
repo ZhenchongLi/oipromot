@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Legacy support for backwards compatibility
     openai_api_key: Optional[str] = None
     deepseek_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
     
     # CORS settings
     cors_origins: list[str] = ["*"]
@@ -55,7 +56,7 @@ class Settings(BaseSettings):
     @validator("ai_provider")
     def validate_ai_provider(cls, v: str) -> str:
         """Validate AI provider."""
-        valid_providers = ["openai", "deepseek", "ollama"]
+        valid_providers = ["openai", "deepseek", "ollama", "gemini"]
         if v.lower() not in valid_providers:
             raise ConfigurationError(f"Invalid AI provider: {v}. Must be one of {valid_providers}")
         return v.lower()
@@ -68,6 +69,8 @@ class Settings(BaseSettings):
                 self.ai_api_key = self.openai_api_key
             elif self.ai_provider == "deepseek" and self.deepseek_api_key:
                 self.ai_api_key = self.deepseek_api_key
+            elif self.ai_provider == "gemini" and self.gemini_api_key:
+                self.ai_api_key = self.gemini_api_key
     
     class Config:
         env_file = ".env"

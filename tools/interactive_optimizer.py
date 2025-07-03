@@ -5,12 +5,6 @@ Interactive Office Prompt Optimizer
 Conversational interface that asks clarifying questions to optimize Office automation requests.
 """
 
-import sys
-import os
-
-# Add the src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
 from oipromot.deepseek_service import DeepSeekService
 
 
@@ -19,7 +13,7 @@ class InteractiveOptimizer:
         self.deepseek = DeepSeekService()
         self.conversation_history = []
         self.target_model_type = "big"  # Default to big model
-        
+
         # Target model capabilities
         self.model_types = {
             "big": {
@@ -29,11 +23,11 @@ class InteractiveOptimizer:
             },
             "small": {
                 "name": "Small Model (7B, 13B models, etc.)",
-                "prompt_style": "detailed, step-by-step, explicit instructions", 
+                "prompt_style": "detailed, step-by-step, explicit instructions",
                 "max_detail": "high"
             }
         }
-        
+
         # AI vs VBA capability mapping
         self.ai_strengths = {
             # Tasks where AI excels
@@ -42,7 +36,7 @@ class InteractiveOptimizer:
             "creative_tasks": ["brainstorm", "design", "creative", "ideas", "头脑风暴", "设计", "创意", "想法"],
             "analysis": ["analyze", "review", "compare", "evaluate", "分析", "评估", "比较", "审查"]
         }
-        
+
         self.vba_strengths = {
             # Tasks where VBA/automation is more reliable
             "data_processing": ["batch", "bulk", "mass", "multiple files", "批量", "大量", "多个文件"],
@@ -50,33 +44,33 @@ class InteractiveOptimizer:
             "file_operations": ["save as", "convert", "export", "import", "保存为", "转换", "导出", "导入"],
             "repetitive_tasks": ["automate", "repeat", "loop", "每个", "重复", "自动化", "循环"]
         }
-    
+
     def add_to_history(self, role: str, content: str):
         """Add message to conversation history"""
         self.conversation_history.append({"role": role, "content": content})
-    
+
     def get_capability_recommendation(self, user_input: str) -> dict:
         """Determine if task is better suited for AI or VBA based on capabilities"""
         user_lower = user_input.lower()
         is_chinese = any('\u4e00' <= char <= '\u9fff' for char in user_input)
-        
+
         ai_score = 0
         vba_score = 0
         ai_reasons = []
         vba_reasons = []
-        
+
         # Check AI strengths
         for category, keywords in self.ai_strengths.items():
             if any(keyword in user_lower for keyword in keywords):
                 ai_score += 1
                 ai_reasons.append(category)
-        
+
         # Check VBA strengths
         for category, keywords in self.vba_strengths.items():
             if any(keyword in user_lower for keyword in keywords):
                 vba_score += 1
                 vba_reasons.append(category)
-        
+
         # Determine recommendation
         if ai_score > vba_score:
             recommendation = "AI"
@@ -87,7 +81,7 @@ class InteractiveOptimizer:
         else:
             recommendation = "HYBRID"  # Both or unclear
             primary_reason = "mixed_capabilities"
-        
+
         return {
             "recommendation": recommendation,
             "reason": primary_reason,
@@ -95,20 +89,20 @@ class InteractiveOptimizer:
             "vba_score": vba_score,
             "is_chinese": is_chinese
         }
-    
+
     def get_optimization(self, user_input: str) -> str:
         """Get optimization or clarifying question from DeepSeek"""
         try:
             # Add user input to history
             self.add_to_history("user", user_input)
-            
+
             # Create context-aware prompt
             context = ""
             if len(self.conversation_history) > 1:
                 context = "\nPrevious conversation:\n"
                 for msg in self.conversation_history[-4:]:  # Last 4 messages for context
                     context += f"{msg['role']}: {msg['content']}\n"
-            
+
             target_model_info = self.model_types[self.target_model_type]
             full_prompt = f"""
 You are an OfficeAI assistant for Word and Excel automation. Strategy:
@@ -140,22 +134,22 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                 if result:
                     self.add_to_history("assistant", result)
                     return result
-            
+
             # Fallback to smart mock
             result = self.smart_mock_response(user_input)
             self.add_to_history("assistant", result)
             return result
-            
+
         except Exception as e:
             return f"Error: {e}"
-    
+
     def smart_mock_response(self, user_input: str) -> str:
         """Smart response with app selection (0/1) and task categorization"""
         user_lower = user_input.lower()
-        
+
         # Detect if input contains Chinese characters
         is_chinese = any('\u4e00' <= char <= '\u9fff' for char in user_input)
-        
+
         # Handle model selection commands
         if user_input.lower() in ['/mb', '/model-big']:
             self.target_model_type = "big"
@@ -163,26 +157,26 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
             if is_chinese:
                 return f"🤖 已切换到大模型模式：{model_name}\n提示将更简洁，依赖模型推理能力"
             return f"🤖 Switched to big model mode: {model_name}\nPrompts will be more brief, relying on model reasoning"
-        
+
         if user_input.lower() in ['/ms', '/model-small']:
             self.target_model_type = "small"
             model_name = self.model_types["small"]["name"]
             if is_chinese:
                 return f"🤖 已切换到小模型模式：{model_name}\n提示将更详细，包含具体步骤"
             return f"🤖 Switched to small model mode: {model_name}\nPrompts will be more detailed with explicit steps"
-        
+
         # Handle app selection responses (0/1)
         if user_input.strip() in ['0', '1']:
             app_name = "Word" if user_input.strip() == '0' else "Excel"
             if is_chinese:
                 return f"已选择{app_name}。请继续描述具体任务。"
             return f"Selected {app_name}. Please describe the specific task."
-        
+
         # Get capability recommendation for the task
         capability = self.get_capability_recommendation(user_input)
-        
+
         # Content generation (Word focus)
-        content_keywords = ["write", "generate", "create content", "draft", "letter", "report", "document", 
+        content_keywords = ["write", "generate", "create content", "draft", "letter", "report", "document",
                            "写", "生成", "创建", "文档", "信件", "报告", "起草"]
         if any(word in user_lower for word in content_keywords):
             if is_chinese:
@@ -203,7 +197,7 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                         return f"{base_msg}\nBrief topic and type description sufficient"
                 else:
                     return "App: 0=Word, 1=Excel\nContent generation → Word. Provide more details"
-        
+
         # VBA/Automation tasks (functional operations)
         automation_keywords = ["automate", "macro", "vba", "batch", "format all", "process", "convert",
                               "自动化", "宏", "批处理", "处理", "转换", "格式化"]
@@ -230,7 +224,7 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                     return "App: 0=Word, 1=Excel\n✅AI Strength: Text processing\nBrief description of processing needs sufficient"
                 else:  # HYBRID
                     return "App: 0=Word, 1=Excel\n🔀Hybrid approach: AI for content + VBA for execution\nDescribe specific task to determine best approach"
-        
+
         # Text processing tasks (AI strengths)
         text_processing_keywords = ["summarize", "translate", "rewrite", "analyze text", "extract", "review",
                                    "总结", "翻译", "改写", "分析文本", "提取", "审查"]
@@ -238,7 +232,7 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
             if is_chinese:
                 return "应用选择：0=Word, 1=Excel\n✅AI优势任务：文本处理\n描述具体文本处理需求（总结、翻译、分析等）"
             return "App: 0=Word, 1=Excel\n✅AI Strength: Text processing\nDescribe specific text processing needs (summarize, translate, analyze, etc.)"
-        
+
         # Excel-specific patterns
         excel_keywords = ["sum", "formula", "chart", "pivot", "cell", "column", "row", "worksheet",
                          "求和", "公式", "图表", "透视表", "单元格", "列", "行", "工作表"]
@@ -257,15 +251,15 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
                     return "App: 0=Word, 1=Excel\n✅AI Strength: Data analysis\nDescribe analysis goals and expected results"
                 else:
                     return "App: 0=Word, 1=Excel\nExcel task. Describe the specific operation"
-        
-        # Word-specific patterns  
+
+        # Word-specific patterns
         word_keywords = ["font", "paragraph", "page", "header", "footer", "style", "align",
                         "字体", "段落", "页面", "页眉", "页脚", "样式", "对齐"]
         if any(word in user_lower for word in word_keywords):
             if is_chinese:
                 return "应用选择：0=Word, 1=Excel\n看起来是Word任务，请描述具体操作"
             return "App: 0=Word, 1=Excel\nSeems like Word task. Describe the specific operation"
-        
+
         # Specific operation responses (when app is known)
         if "font" in user_lower or "字号" in user_lower or "字体" in user_lower:
             if "size" not in user_lower and "pt" not in user_lower and "磅" not in user_lower:
@@ -275,7 +269,7 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
             if is_chinese:
                 return "Word操作：选择文字 → 开始 → 字号 → 14磅"
             return "Word: Select text → Home → Font Size → 14pt"
-        
+
         # General capability-based recommendation
         if capability["recommendation"] == "AI":
             if is_chinese:
@@ -289,12 +283,12 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
             if is_chinese:
                 return f"应用选择：0=Word, 1=Excel\n🔀混合方案：AI+VBA\n任务：'{user_input}'\n请提供更多细节以确定最佳方案"
             return f"App: 0=Word, 1=Excel\n🔀Hybrid approach: AI+VBA\nTask: '{user_input}'\nProvide more details to determine best approach"
-        
+
         # Default - ask for app selection
         if is_chinese:
             return f"应用选择：0=Word, 1=Excel\n任务：'{user_input}'"
         return f"App: 0=Word, 1=Excel\nTask: '{user_input}'"
-    
+
     def run(self):
         """Main interactive loop"""
         current_model = self.model_types[self.target_model_type]["name"]
@@ -302,31 +296,31 @@ Response IN SAME LANGUAGE with appropriate detail level for {self.target_model_t
         print("I'll help optimize your Word/Excel requests through conversation!")
         print(f"Target Model: {current_model}")
         print("Commands: /q=quit, /e=exit, /c=clear (fresh start), /mb=big model, /ms=small model\n")
-        
+
         while True:
             try:
                 user_input = input("📝 Your request: ").strip()
-                
+
                 if user_input.lower() in ['/q', '/quit']:
                     print("👋 Goodbye!")
                     break
-                
+
                 if user_input.lower() in ['/e', '/exit']:
                     print("👋 Goodbye!")
                     break
-                
+
                 if user_input.lower() in ['/c', '/clear']:
                     self.conversation_history = []
                     print("🧹 Conversation cleared! Starting fresh with new memory.")
                     continue
-                
+
                 if not user_input:
                     continue
-                
+
                 print("🤔 Processing...")
                 response = self.get_optimization(user_input)
                 print(f"🤖 {response}\n")
-                
+
             except KeyboardInterrupt:
                 print("\n👋 Goodbye!")
                 break
