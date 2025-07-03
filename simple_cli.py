@@ -21,7 +21,7 @@ class RequirementOptimizer:
         api_base_url = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
         if not api_base_url.endswith("/v1"):
             api_base_url = api_base_url.rstrip("/") + "/v1"
-            
+
         api_key = os.getenv("API_KEY")  # None for Ollama
         self.model = os.getenv("AI_MODEL") or os.getenv("MODEL", "qwen3:1.7b")
 
@@ -49,7 +49,7 @@ class RequirementOptimizer:
         is_chinese = any('\u4e00' <= char <= '\u9fff' for char in user_input)
 
         if is_chinese:
-            system_prompt = """你是一个需求分析专家。你的任务是将用户的原始输入转化为清晰、准确的需求描述。
+            system_prompt = """你是一个需求分析专家，同时也是Excel和Word专家。你的任务是将用户的原始输入转化为清晰、准确的需求描述。
 
 要求：
 1. 只描述用户想要什么，不要添加如何实现的建议
@@ -57,10 +57,11 @@ class RequirementOptimizer:
 3. 保持需求的核心意图
 4. 去除冗余信息
 5. 确保描述完整且明确
+6. 如果涉及Excel或Word功能，准确理解相关术语和需求
 
 请将以下用户输入转化为清晰的需求描述："""
         else:
-            system_prompt = """You are a requirement analysis expert. Your task is to transform the user's raw input into a clear, accurate requirement description.
+            system_prompt = """You are a requirement analysis expert and also an Excel and Word expert. Your task is to transform the user's raw input into a clear, accurate requirement description.
 
 Requirements:
 1. Only describe what the user wants, do not add suggestions on how to implement
@@ -68,6 +69,7 @@ Requirements:
 3. Maintain the core intent of the requirement
 4. Remove redundant information
 5. Ensure the description is complete and clear
+6. If involving Excel or Word features, accurately understand related terms and requirements
 
 Please transform the following user input into a clear requirement description:"""
 
@@ -88,7 +90,7 @@ Please transform the following user input into a clear requirement description:"
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
                 ],
-                max_tokens=500,
+                max_tokens=5000,
                 temperature=0.3
             )
 
@@ -133,7 +135,11 @@ async def main():
 
     while True:
         try:
-            user_input = input("Enter your requirement: ").strip()
+            try:
+                user_input = input("Enter your requirement: ").strip()
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                break
 
             if user_input.lower() in ['quit', 'exit', 'q']:
                 print("Goodbye!")
@@ -143,11 +149,14 @@ async def main():
                 continue
 
             print("Processing...")
-            optimized = await optimizer.optimize_requirement(user_input)
-
-            print(f"\n📝 Optimized Requirement:")
-            print(f"{optimized}\n")
-            print("-" * 50)
+            try:
+                optimized = await optimizer.optimize_requirement(user_input)
+                print(f"\n📝 Optimized Requirement:")
+                print(f"{optimized}\n")
+                print("-" * 50)
+            except KeyboardInterrupt:
+                print("\nOperation cancelled.")
+                continue
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
