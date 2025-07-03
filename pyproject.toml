@@ -1,50 +1,9 @@
 [project]
 name = "oipromot"
 version = "0.1.0"
-description = "OfficeAI User End Prompt Project"
-readme = "README.md"
+description = "Simple CLI for optimizing user input prompts"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "sqlmodel>=0.0.14",
-    "duckdb>=0.9.0",
-    "duckdb-engine>=0.9.0",
-    "langchain>=0.1.0",
-    "langchain-openai>=0.1.0",
     "openai>=1.0.0",
     "python-dotenv>=1.0.0",
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
-    "orjson>=3.9.0",
 ]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "httpx>=0.25.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-asyncio_mode = "auto"
-
-[tool.black]
-line-length = 88
-target-version = ['py313']
-
-[tool.ruff]
-select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "COM", "C4", "DTZ", "T10", "EXE", "ISC", "ICN", "G", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "RUF"]
-ignore = ["ANN101", "ANN102", "COM812", "ISC001"]
-line-length = 88
-target-version = "py313"
