@@ -90,7 +90,7 @@ Please transform the following user input into a clear requirement description:"
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
                 ],
-                max_tokens=5000,
+                max_tokens=3000,
                 temperature=0.3
             )
 
