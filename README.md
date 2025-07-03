@@ -1,17 +1,17 @@
 # OiPromot - Simple Requirement Optimizer
 
-A simple tool that optimizes user input to clearly describe requirements without extra guidance.
+A simple CLI tool that optimizes user input to clearly describe requirements without extra guidance.
 
 ## 🏗️ Simple Structure
 
-This tool has been simplified to focus on a single purpose:
+Ultra-simple structure with just the essentials:
 
 ```
 oipromot/
 ├── cli.py                  # Main CLI entry point
 ├── simple_cli.py           # Core requirement optimizer
-├── simple_optimizer.py     # Alternative standalone version
-└── .env.example            # Configuration template
+├── .env.example            # Configuration template
+└── pyproject.toml          # uv project config
 ```
 
 ## 🚀 Key Features
@@ -21,9 +21,10 @@ oipromot/
 - No extra guidance or implementation suggestions
 - Clean, professional language output
 
-### 2. **Multi-Provider Support**
-- OpenAI API integration
-- DeepSeek API integration
+### 2. **OpenAI-Compatible API Support**
+- Works with any OpenAI-compatible API (Ollama, OpenAI, DeepSeek, Groq, etc.)
+- Default configuration for Ollama (local)
+- Simple environment variable configuration
 - Automatic fallback to simple text cleaning when APIs unavailable
 
 ### 3. **Language Support**
@@ -41,6 +42,7 @@ oipromot/
 ### Prerequisites
 - Python 3.13+
 - uv package manager
+- For default setup: [Ollama](https://ollama.ai) with a model like `qwen2.5:3b`
 
 ### Installation
 ```bash
@@ -53,16 +55,25 @@ uv sync
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your API configuration (defaults to Ollama)
+
+# For Ollama setup (default):
+# 1. Install Ollama: https://ollama.ai
+# 2. Pull a model: ollama pull qwen2.5:3b
+# 3. Run: uv run python cli.py (uses default Ollama config)
 ```
 
 ### Environment Variables
 ```bash
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key_here
+# OpenAI-compatible API Configuration
+# Default: Ollama (local)
+API_BASE_URL=http://localhost:11434/v1
+# API_KEY=  # Leave empty for Ollama (no key required)
+MODEL=qwen2.5:3b
 
-# DeepSeek Configuration
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
+# Examples for different providers:
+# OpenAI: API_BASE_URL=https://api.openai.com/v1, API_KEY=sk-..., MODEL=gpt-3.5-turbo
+# DeepSeek: API_BASE_URL=https://api.deepseek.com/v1, API_KEY=sk-..., MODEL=deepseek-chat
 ```
 
 ## 🚀 Usage
@@ -70,15 +81,12 @@ DEEPSEEK_API_KEY=your_deepseek_api_key_here
 ### CLI Interface
 ```bash
 # Run the requirement optimizer
-python cli.py
-
-# Or run the standalone version
-python simple_optimizer.py
+uv run python cli.py
 ```
 
 ### Example Usage
 ```bash
-$ python cli.py
+$ uv run python cli.py
 🎯 Requirement Optimizer
 Transform user input into clear requirement descriptions
 Type 'quit' to exit
@@ -122,9 +130,18 @@ You can test the optimizer with various inputs:
 ## 🔧 How It Works
 
 1. **Input Analysis**: Detects language (Chinese/English) and removes filler words
-2. **AI Processing**: Uses OpenAI or DeepSeek API to optimize the requirement description
+2. **AI Processing**: Uses any OpenAI-compatible API (default: Ollama) to optimize the requirement description
 3. **Fallback**: Simple text cleaning when APIs are unavailable
 4. **Output**: Clear, professional requirement description
+
+## 🛠️ Supported Providers
+
+The tool works with any OpenAI-compatible API:
+- **Ollama** (default) - Local models like Qwen, Llama, etc.
+- **OpenAI** - GPT models
+- **DeepSeek** - DeepSeek Chat
+- **Groq** - Fast inference
+- **Any other OpenAI-compatible provider**
 
 ## 📝 License
 
