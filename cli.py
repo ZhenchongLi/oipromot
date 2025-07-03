@@ -1,50 +1,45 @@
 #!/usr/bin/env python3
 """
-Command-line interface entry points for OiPromot.
+Simplified CLI for requirement optimization.
 """
 
 import sys
-import argparse
-from oipromot.cli.interactive import InteractiveCLI
-from oipromot.cli.simple import SimpleCLI
+import asyncio
+from simple_cli import RequirementOptimizer
 
 
-def main():
+async def main():
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description="OiPromot - Office AI Prompt Optimizer",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python cli.py interactive    # Start interactive mode
-  python cli.py simple         # Start simple mode
-  python cli.py --help         # Show this help message
-        """
-    )
-    parser.add_argument(
-        'mode',
-        choices=['interactive', 'simple'],
-        nargs='?',
-        default='interactive',
-        help='CLI mode to run (default: interactive)'
-    )
-
-    args = parser.parse_args()
-
-    try:
-        if args.mode == 'interactive':
-            cli = InteractiveCLI()
-            cli.run()
-        elif args.mode == 'simple':
-            cli = SimpleCLI()
-            cli.run()
-    except KeyboardInterrupt:
-        print("\\n👋 Goodbye!")
-        sys.exit(0)
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        sys.exit(1)
+    optimizer = RequirementOptimizer()
+    
+    print("🎯 Requirement Optimizer")
+    print("Transform user input into clear requirement descriptions")
+    print("Type 'quit' to exit\n")
+    
+    while True:
+        try:
+            user_input = input("Enter your requirement: ").strip()
+            
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                print("Goodbye!")
+                break
+            
+            if not user_input:
+                continue
+            
+            print("Processing...")
+            optimized = await optimizer.optimize_requirement(user_input)
+            
+            print(f"\n📝 Optimized Requirement:")
+            print(f"{optimized}\n")
+            print("-" * 50)
+            
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            break
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
