@@ -1,158 +1,226 @@
-# OiPromot - Simple Requirement Optimizer
+# Simple CLI - 交互式需求优化器
 
-A simple CLI tool that optimizes user input to clearly describe requirements without extra guidance.
+一个基于 AI 的交互式需求优化工具，帮助用户将模糊的需求转化为清晰、准确的需求描述。
 
-## 🏗️ Simple Structure
-
-Ultra-simple structure with just the essentials:
+## 🏗️ 项目结构
 
 ```
 oipromot/
-├── cli.py                  # Main CLI entry point
-├── simple_cli.py           # Core requirement optimizer
-├── .env.example            # Configuration template
-└── pyproject.toml          # uv project config
+├── cli.py                  # 原始CLI入口
+├── simple_cli.py           # 交互式需求优化器（主要功能）
+├── .env.example            # 配置模板
+└── pyproject.toml          # uv项目配置
 ```
 
-## 🚀 Key Features
+## 🚀 功能特性
 
-### 1. **Single Purpose**
-- Focuses only on optimizing user input for clear requirement descriptions
-- No extra guidance or implementation suggestions
-- Clean, professional language output
+### 1. **交互式需求优化**
+- 将用户的原始输入转化为清晰、准确的需求描述
+- 支持 Excel 和 Word 相关功能的专业术语理解
+- 自动去除冗余信息，保持需求核心意图
+- 以列表形式输出，每个需求点用数字编号
 
-### 2. **OpenAI-Compatible API Support**
-- Works with any OpenAI-compatible API (Ollama, OpenAI, DeepSeek, Groq, etc.)
-- Default configuration for Ollama (local)
-- Simple environment variable configuration
-- Automatic fallback to simple text cleaning when APIs unavailable
+### 2. **反馈调整机制**
+- 初始需求优化后，用户可以提供反馈进行调整
+- 支持多轮反馈迭代，直到满意为止
+- 实时显示 AI 调整后的结果
 
-### 3. **Language Support**
-- Automatic Chinese/English detection
-- Appropriate prompts for each language
-- Maintains cultural context in optimization
+### 3. **思考模式控制**
+- **无思考模式**（默认）：快速响应，直接输出结果
+- **思考模式**：通过 `/t` 激活，提供更深入的分析
 
-### 4. **Simple Configuration**
-- Environment variable based configuration
-- No complex setup required
-- Clear API key management
+### 4. **技术特性**
+- 支持 OpenAI 兼容的 API（包括 Ollama）
+- 异步处理，响应时间显示
+- 自动语言检测（中文/英文）
+- 优雅的错误处理和回退机制
 
-## 🛠️ Installation & Setup
+## 🛠️ 安装要求
 
-### Prerequisites
-- Python 3.13+
-- uv package manager
-- For default setup: [Ollama](https://ollama.ai) with a model like `qwen2.5:3b`
-
-### Installation
+### 依赖
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd oipromot
-
-# Install dependencies
-uv sync
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your API configuration (defaults to Ollama)
-
-# For Ollama setup (default):
-# 1. Install Ollama: https://ollama.ai
-# 2. Pull a model: ollama pull qwen2.5:3b
-# 3. Run: uv run python cli.py (uses default Ollama config)
+pip install openai python-dotenv
 ```
 
-### Environment Variables
+### 环境配置
+创建 `.env` 文件：
+```env
+# API 配置
+API_BASE_URL=http://localhost:11434/v1  # Ollama 默认地址
+API_KEY=your_api_key_here               # OpenAI API key（Ollama 可省略）
+AI_MODEL=qwen3:1.7b                     # 模型名称
+```
+
+## 🚀 使用方法
+
+### 启动程序
 ```bash
-# OpenAI-compatible API Configuration
-# Default: Ollama (local)
-API_BASE_URL=http://localhost:11434/v1
-# API_KEY=  # Leave empty for Ollama (no key required)
-MODEL=qwen2.5:3b
-
-# Examples for different providers:
-# OpenAI: API_BASE_URL=https://api.openai.com/v1, API_KEY=sk-..., MODEL=gpt-3.5-turbo
-# DeepSeek: API_BASE_URL=https://api.deepseek.com/v1, API_KEY=sk-..., MODEL=deepseek-chat
+python simple_cli.py
 ```
 
-## 🚀 Usage
+### 交互命令
+| 命令 | 功能 |
+|------|------|
+| `quit`, `exit`, `q` | 退出程序 |
+| `/n`, `n` | 开始新对话 |
+| `/t` | 启用思考模式（在输入中包含） |
+| `Ctrl+C` | 快速退出 |
 
-### CLI Interface
+### 使用流程
+
+1. **启动程序**
+   ```
+   🎯 交互式需求优化器
+   通过确认流程转换用户输入
+   命令: 'quit' 退出, '/n' 或 'n' 开始新对话, '/t' 启用思考模式, Ctrl+C 快速退出
+   
+   请输入您的需求: 
+   ```
+
+2. **输入需求**
+   ```
+   请输入您的需求: 我想要一个Excel表格来跟踪项目进度
+   ```
+
+3. **查看 AI 优化结果**
+   ```
+   处理中...
+   ⏱️ 响应时间: 1.23s (无思考模式)
+   
+   🤖 AI回复: 1. 创建Excel工作表用于项目进度跟踪
+   2. 包含项目名称、负责人、开始日期、截止日期、完成状态等字段
+   3. 支持进度百分比显示和状态更新功能
+   
+   请选择:
+   1. 输入反馈意见进行调整
+   2. 输入 '/n' 或 'n' 开始新对话
+   ```
+
+4. **提供反馈调整**
+   ```
+   您的反馈: 还需要添加风险评估和预算跟踪功能
+   
+   🤖 AI调整后回复: 1. 创建Excel工作表用于项目进度跟踪
+   2. 包含项目名称、负责人、开始日期、截止日期、完成状态等字段
+   3. 支持进度百分比显示和状态更新功能
+   4. 添加风险评估等级和风险描述字段
+   5. 包含预算跟踪功能，显示预算金额和实际支出
+   
+   请选择:
+   1. 输入反馈意见继续调整
+   2. 输入 '/n' 或 'n' 开始新对话
+   ```
+
+### 思考模式使用
+
+在输入中包含 `/t` 来启用思考模式：
+```
+请输入您的需求: /t 设计一个复杂的数据分析系统
+```
+
+思考模式特点：
+- 使用更高的温度参数（0.3 vs 0.1）
+- 分配更多 token 限制（3000 vs 1500）
+- 提供更深入的分析和思考过程
+
+## 🔧 代码结构
+
+### 主要类和方法
+
+```python
+class RequirementOptimizer:
+    def __init__(self)                                              # 初始化优化器
+    async def start_session(self, user_input: str) -> str          # 开始新会话
+    async def handle_feedback(self, feedback: str) -> str          # 处理用户反馈
+    async def optimize_requirement(self, user_input: str) -> str   # 优化需求
+    async def refine_requirement(self, initial_result: str, feedback: str) -> str  # 细化需求
+    async def _call_api(self, system_prompt: str, user_input: str) -> Optional[str]  # API调用
+```
+
+### 配置参数
+
+#### 思考模式控制
+- **检测机制**：检测用户输入中是否包含 `/t`
+- **无思考模式**（默认）：
+  - `temperature=0.1`
+  - `max_tokens=1500`
+  - `enable_thinking=False`
+- **思考模式**：
+  - `temperature=0.3`
+  - `max_tokens=3000`
+  - `enable_thinking=True`
+
+#### 会话状态
+- `WAITING_FEEDBACK`: 等待用户反馈
+- `NEW_CONVERSATION`: 开始新对话
+
+## 🧪 测试示例
+
+### 基本使用
 ```bash
-# Run the requirement optimizer
-uv run python cli.py
+$ python simple_cli.py
+🎯 交互式需求优化器
+请输入您的需求: 创建一个客户管理系统
+
+🤖 AI回复: 1. 创建客户信息管理系统
+2. 包含客户基本信息录入和编辑功能
+3. 支持客户信息查询和筛选
+4. 提供客户联系记录管理
 ```
 
-### Example Usage
+### 思考模式
 ```bash
-$ uv run python cli.py
-🎯 Requirement Optimizer
-Transform user input into clear requirement descriptions
-Type 'quit' to exit
+请输入您的需求: /t 设计一个复杂的财务报表系统
+⏱️ 响应时间: 2.45s (思考模式)
 
-Enter your requirement: I want to help me create a spreadsheet that can track my expenses
-
-Processing...
-
-📝 Optimized Requirement:
-Create a spreadsheet for expense tracking
-
---------------------------------------------------
-Enter your requirement: 请帮我做一个能够管理客户信息的表格
-
-Processing...
-
-📝 Optimized Requirement:
-创建一个客户信息管理表格
-
---------------------------------------------------
+🤖 AI回复: 1. 设计综合财务报表系统
+2. 包含损益表、资产负债表、现金流量表等核心报表
+3. 支持多期间对比分析和趋势分析
+4. 提供财务指标计算和可视化展示
+5. 集成预算管理和成本控制模块
 ```
 
-## 🧪 Testing
+## 🛠️ 支持的API提供商
 
-You can test the optimizer with various inputs:
-
-```bash
-# Test with verbose input
-"I want to help me create a spreadsheet that can track my expenses"
-→ "Create a spreadsheet for expense tracking"
-
-# Test with Chinese input
-"请帮我做一个能够管理客户信息的表格"
-→ "创建一个客户信息管理表格"
-
-# Test with simple input
-"make a report"
-→ "Make a report"
-```
-
-## 🔧 How It Works
-
-1. **Input Analysis**: Detects language (Chinese/English) and removes filler words
-2. **AI Processing**: Uses any OpenAI-compatible API (default: Ollama) to optimize the requirement description
-3. **Fallback**: Simple text cleaning when APIs are unavailable
-4. **Output**: Clear, professional requirement description
-
-## 🛠️ Supported Providers
-
-The tool works with any OpenAI-compatible API:
-- **Ollama** (default) - Local models like Qwen, Llama, etc.
-- **OpenAI** - GPT models
+支持所有 OpenAI 兼容的 API：
+- **Ollama**（默认）- 本地模型如 Qwen、Llama 等
+- **OpenAI** - GPT 模型
 - **DeepSeek** - DeepSeek Chat
-- **Groq** - Fast inference
-- **Any other OpenAI-compatible provider**
+- **Groq** - 快速推理
+- **任何其他 OpenAI 兼容的提供商**
 
-## 📝 License
+## 🔍 常见问题
 
-This project is licensed under the MIT License.
+### API 连接问题
+1. 确保 Ollama 服务正在运行
+2. 检查 `API_BASE_URL` 配置
+3. 验证模型名称是否正确
 
-## 🆘 Support
+### 响应质量问题
+1. 尝试使用思考模式（`/t`）
+2. 提供更具体的需求描述
+3. 通过反馈机制进行迭代优化
 
-For support and questions:
-- Create an issue in the repository
-- Check the configuration in `.env.example`
+### 性能优化
+1. 使用无思考模式获得更快响应
+2. 选择合适的模型大小
+3. 调整 `max_tokens` 限制
 
----
+## 📝 开发说明
 
-**Note**: This simplified version focuses purely on requirement optimization without extra guidance.
+### 核心特点
+- 异步处理提高响应性能
+- 统一的思考模式控制
+- 完整的会话状态管理
+- 优雅的错误处理和回退机制
+- 响应时间监控
+
+### 扩展点
+- 支持更多 AI 模型提供商
+- 添加更多专业领域的需求模板
+- 集成更多输出格式选项
+- 添加历史记录和会话管理
+
+## 📝 许可证
+
+MIT License
