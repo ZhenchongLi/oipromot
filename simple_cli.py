@@ -21,7 +21,7 @@ load_dotenv()
 class RequirementOptimizer:
     """Optimizes user input with interactive confirmation flow."""
 
-    def __init__(self, no_think: bool = False):
+    def __init__(self):
         # Unified OpenAI-compatible API configuration
         api_base_url = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
         if not api_base_url.endswith("/v1"):
@@ -29,7 +29,6 @@ class RequirementOptimizer:
 
         api_key = os.getenv("API_KEY")  # None for Ollama
         self.model = os.getenv("AI_MODEL") or os.getenv("MODEL", "qwen3:1.7b")
-        self.no_think = no_think
 
         # Initialize OpenAI client with custom base URL
         # For Ollama, we need to provide a dummy key since OpenAI client requires it
@@ -61,20 +60,11 @@ class RequirementOptimizer:
         # Generate initial response
         initial_result = await self.optimize_requirement(user_input)
 
-        # Detect language
-        is_chinese = any('\u4e00' <= char <= '\u9fff' for char in user_input)
-
-        # Show AI response and options
-        if is_chinese:
-            print(f"\n🤖 AI回复: {initial_result}")
-            print("\n请选择:")
-            print("1. 输入反馈意见进行调整")
-            print("2. 输入 '/n' 或 'n' 开始新对话")
-        else:
-            print(f"\n🤖 AI Reply: {initial_result}")
-            print("\nPlease choose:")
-            print("1. Enter feedback for adjustment")
-            print("2. Enter '/n' or 'n' to start new conversation")
+        # Default to Chinese
+        print(f"\n🤖 AI回复: {initial_result}")
+        print("\n请选择:")
+        print("1. 输入反馈意见进行调整")
+        print("2. 输入 '/n' 或 'n' 开始新对话")
 
         return "WAITING_FEEDBACK"
 
@@ -96,19 +86,11 @@ class RequirementOptimizer:
             self.current_feedback = feedback
             adjusted_result = await self.refine_requirement(self.current_requirement, feedback)
 
-            # Detect language
-            is_chinese = any('\u4e00' <= char <= '\u9fff' for char in feedback)
-
-            if is_chinese:
-                print(f"\n🤖 AI调整后回复: {adjusted_result}")
-                print("\n请选择:")
-                print("1. 输入反馈意见继续调整")
-                print("2. 输入 '/n' 或 'n' 开始新对话")
-            else:
-                print(f"\n🤖 AI Adjusted Reply: {adjusted_result}")
-                print("\nPlease choose:")
-                print("1. Enter feedback for further adjustment")
-                print("2. Enter '/n' or 'n' to start new conversation")
+            # Default to Chinese
+            print(f"\n🤖 AI调整后回复: {adjusted_result}")
+            print("\n请选择:")
+            print("1. 输入反馈意见继续调整")
+            print("2. 输入 '/n' 或 'n' 开始新对话")
 
             return "WAITING_FEEDBACK"
 
@@ -143,14 +125,8 @@ class RequirementOptimizer:
         Returns:
             Optimized requirement description
         """
-        # Detect language
-        is_chinese = any('\u4e00' <= char <= '\u9fff' for char in user_input)
-
-        if is_chinese:
-            if self.no_think:
-                system_prompt = """直接转化用户输入为清晰的需求描述。请以列表形式输出，每个需求点用数字编号。只输出最终结果，不要思考过程，不要解释。"""
-            else:
-                system_prompt = """你是一个需求分析专家，同时也是Excel和Word专家。你的任务是将用户的原始输入转化为清晰、准确的需求描述。
+        # Default to Chinese
+        system_prompt = """你是一个需求分析专家，同时也是Excel和Word专家。你的任务是将用户的原始输入转化为清晰、准确的需求描述。
 
 要求：
 1. 只描述用户想要什么，不要添加如何实现的建议
@@ -162,22 +138,6 @@ class RequirementOptimizer:
 7. 输出结果必须以列表形式展示，每个需求点用数字编号
 
 请将以下用户输入转化为清晰的需求描述："""
-        else:
-            if self.no_think:
-                system_prompt = """Transform user input into clear requirement description. Please output in list format, with each requirement point numbered. Output final result only, no thinking process, no explanation."""
-            else:
-                system_prompt = """You are a requirement analysis expert and also an Excel and Word expert. Your task is to transform the user's raw input into a clear, accurate requirement description.
-
-Requirements:
-1. Only describe what the user wants, do not add suggestions on how to implement
-2. Use concise, professional language
-3. Maintain the core intent of the requirement
-4. Remove redundant information
-5. Ensure the description is complete and clear
-6. If involving Excel or Word features, accurately understand related terms and requirements
-7. Output result must be in list format, with each requirement point numbered
-
-Please transform the following user input into a clear requirement description:"""
 
         # Try the configured OpenAI-compatible API
         result = await self._call_api(system_prompt, user_input)
@@ -198,14 +158,8 @@ Please transform the following user input into a clear requirement description:"
         Returns:
             Refined requirement description
         """
-        # Detect language
-        is_chinese = any('\u4e00' <= char <= '\u9fff' for char in feedback)
-
-        if is_chinese:
-            if self.no_think:
-                system_prompt = """根据用户反馈调整需求描述。请以列表形式输出，每个需求点用数字编号。只输出最终结果，不要思考过程。"""
-            else:
-                system_prompt = """你是一个需求分析专家。根据用户的反馈，调整和优化之前的需求描述。
+        # Default to Chinese
+        system_prompt = """你是一个需求分析专家。根据用户的反馈，调整和优化之前的需求描述。
 
 要求：
 1. 根据用户反馈调整需求描述
@@ -215,40 +169,31 @@ Please transform the following user input into a clear requirement description:"
 5. 输出结果必须以列表形式展示，每个需求点用数字编号
 
 请提供调整后的需求描述："""
-        else:
-            if self.no_think:
-                system_prompt = """Adjust requirement description based on user feedback. Please output in list format, with each requirement point numbered. Output final result only, no thinking process."""
-            else:
-                system_prompt = """You are a requirement analysis expert. Based on user feedback, adjust and optimize the previous requirement description.
-
-Requirements:
-1. Adjust requirement description based on user feedback
-2. Keep it professional and concise
-3. Ensure the adjusted description better matches user intent
-4. Do not add implementation suggestions, only describe requirements
-5. Output result must be in list format, with each requirement point numbered
-
-Please provide the adjusted requirement description:"""
 
         # Try the configured OpenAI-compatible API
-        user_message = f"之前的需求描述：{initial_result}\n用户反馈：{feedback}" if is_chinese else f"Previous requirement description: {initial_result}\nUser feedback: {feedback}"
+        user_message = f"之前的需求描述：{initial_result}\n用户反馈：{feedback}"
         result = await self._call_api(system_prompt, user_message)
         if result:
             return result
 
         # Fallback: return initial result with feedback note
-        return f"{initial_result}\n\n[User feedback: {feedback}]"
+        return f"{initial_result}\n\n[用户反馈: {feedback}]"
 
     async def _call_api(self, system_prompt: str, user_input: str) -> Optional[str]:
         """Call OpenAI-compatible API using OpenAI client."""
         start_time = time.time()
         try:
-            # Configure parameters based on no-think mode
-            temperature = 0.1 if self.no_think else 0.3
-            max_tokens = 1500 if self.no_think else 3000
+            # Default to no-think mode, enable think mode if /t is present
+            enable_thinking = "/t" in user_input
+            no_think = not enable_thinking
 
-            if self.no_think:
-                system_prompt = f"{system_prompt}/no_think"
+            # Configure parameters based on thinking mode
+            temperature = 0.1 if no_think else 0.3
+            max_tokens = 1500 if no_think else 3000
+
+            if no_think:
+                # Use simplified no-think prompt for Chinese
+                system_prompt = """直接转化用户输入为清晰的需求描述。请以列表形式输出，每个需求点用数字编号。只输出最终结果，不要思考过程，不要解释。"""
 
             # Build the request parameters
             request_params = {
@@ -261,33 +206,31 @@ Please provide the adjusted requirement description:"""
                 "temperature": temperature,
             }
 
-            # Add enable_thinking parameter for Ollama when no-think is enabled
-            if self.no_think or True:
-                # Use the correct structure for Ollama parameters
-                request_params["extra_body"] = {
-                    "enable_thinking": False
-                }
+            # Add enable_thinking parameter for Ollama
+            request_params["extra_body"] = {
+                "enable_thinking": enable_thinking
+            }
 
             response = await self.client.chat.completions.create(**request_params)
-            
+
             # Calculate response time
             response_time = time.time() - start_time
-            
+
             result = response.choices[0].message.content.strip()
-            
+
             # Remove thinking tags if they appear (fallback for when enable_thinking doesn't work)
-            if self.no_think and '<think>' in result:
+            if no_think and '<think>' in result:
                 result = re.sub(r'<think>.*?</think>', '', result, flags=re.DOTALL).strip()
-            
+
             # Display response time
-            mode_text = " (No-Think)" if self.no_think else ""
-            print(f"⏱️ Response time: {response_time:.2f}s{mode_text}")
-            
+            mode_text = " (思考模式)" if enable_thinking else " (无思考模式)"
+            print(f"⏱️ 响应时间: {response_time:.2f}s{mode_text}")
+
             return result
 
         except Exception as e:
             response_time = time.time() - start_time
-            print(f"API error: {e} (after {response_time:.2f}s)")
+            print(f"API错误: {e} (用时 {response_time:.2f}s)")
             return None
 
     def _simple_clean(self, user_input: str) -> str:
@@ -317,7 +260,7 @@ Please provide the adjusted requirement description:"""
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully."""
-    print("\n👋 Goodbye!")
+    print("\n👋 再见!")
     sys.exit(0)
 
 
@@ -325,39 +268,36 @@ async def main():
     """CLI interface for the requirement optimizer with interactive flow."""
     # Set up signal handler for Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     parser = argparse.ArgumentParser(description="Interactive Requirement Optimizer")
-    parser.add_argument("--no-think", action="store_true",
-                       help="Disable thinking mode for faster, more direct responses")
     args = parser.parse_args()
 
-    optimizer = RequirementOptimizer(no_think=args.no_think)
+    optimizer = RequirementOptimizer()
     session_active = False
 
-    mode_text = " (No-Think Mode)" if args.no_think else ""
-    print(f"🎯 Interactive Requirement Optimizer{mode_text}")
-    print("Transform user input with confirmation flow")
-    print("Commands: 'quit' to exit, '/n' or 'n' for new conversation, Ctrl+C for fast quit\n")
+    print("🎯 交互式需求优化器")
+    print("通过确认流程转换用户输入")
+    print("命令: 'quit' 退出, '/n' 或 'n' 开始新对话, '/t' 启用思考模式, Ctrl+C 快速退出\n")
 
     while True:
         try:
             try:
                 if not session_active:
-                    user_input = input("Enter your requirement: ").strip()
+                    user_input = input("请输入您的需求: ").strip()
                 else:
-                    user_input = input("Your feedback: ").strip()
+                    user_input = input("您的反馈: ").strip()
             except KeyboardInterrupt:
-                print("\nGoodbye!")
+                print("\n再见!")
                 break
 
             if user_input.lower() in ['quit', 'exit', 'q']:
-                print("Goodbye!")
+                print("再见!")
                 break
 
             if user_input.lower() in ['/n', 'n']:
                 optimizer.reset_session()
                 session_active = False
-                print("✨ Starting new conversation\n")
+                print("✨ 开始新对话\n")
                 continue
 
             if not user_input:
@@ -366,7 +306,7 @@ async def main():
             try:
                 if not session_active:
                     # Start new session
-                    print("Processing...")
+                    print("处理中...")
                     result = await optimizer.start_session(user_input)
                     if result == "WAITING_FEEDBACK":
                         session_active = True
@@ -376,21 +316,21 @@ async def main():
 
                     if result == "NEW_CONVERSATION":
                         session_active = False
-                        print("✨ Starting new conversation\n")
+                        print("✨ 开始新对话\n")
                         continue
                     elif result == "WAITING_FEEDBACK":
                         # Continue waiting for feedback
                         continue
 
             except KeyboardInterrupt:
-                print("\nOperation cancelled.")
+                print("\n操作已取消。")
                 continue
 
         except KeyboardInterrupt:
-            print("\nGoodbye!")
+            print("\n再见!")
             break
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"错误: {e}")
 
 
 if __name__ == "__main__":
