@@ -37,9 +37,47 @@ oipromot/
 
 ## 🛠️ 安装要求
 
-### 依赖
+### 快速开始
+
+1. **安装依赖**
+   ```bash
+   # 使用 uv 安装项目依赖
+   uv sync
+   ```
+
+2. **测试安装**
+   ```bash
+   # 验证所有模块正确安装
+   uv run test-install
+   ```
+
+3. **配置环境**
+   ```bash
+   # 复制环境配置模板
+   cp .env.example .env
+   # 编辑 .env 配置你的 API 设置
+   ```
+
+4. **启动应用**
+   ```bash
+   # CLI 版本
+   uv run simple-cli
+   
+   # Web 版本
+   uv run web-app
+   ```
+
+### 依赖管理
+项目使用 uv 进行现代化 Python 依赖管理：
 ```bash
-pip install openai python-dotenv
+# 添加新依赖
+uv add package-name
+
+# 开发依赖
+uv sync --group dev
+
+# 更新依赖
+uv lock --upgrade
 ```
 
 ### 环境配置
@@ -55,7 +93,10 @@ AI_MODEL=qwen3:1.7b                     # 模型名称
 
 ### 启动程序
 ```bash
-python simple_cli.py
+# 使用 uv 运行
+uv run python simple_cli.py
+# 或者使用脚本命令
+uv run simple-cli
 ```
 
 ### 交互命令
@@ -206,6 +247,74 @@ $ python simple_cli.py
 2. 选择合适的模型大小
 3. 调整 `max_tokens` 限制
 
+## 🌐 Web 应用版本
+
+除了命令行版本，我们还提供了基于 FastAPI 和 WebSocket 的 Web 应用版本。
+
+### 启动 Web 应用
+
+```bash
+# 安装依赖
+uv sync
+
+# 启动 Web 服务器
+uv run python run_web.py
+# 或者使用脚本命令
+uv run web-app
+```
+
+### 访问应用
+- **Web 界面**: http://localhost:8000
+- **API 文档**: http://localhost:8000/docs
+
+### Web 版本特性
+
+1. **现代化界面**
+   - 响应式设计，支持桌面和移动设备
+   - 实时聊天界面
+   - 美观的消息气泡和动画效果
+
+2. **实时通信**
+   - WebSocket 连接，实时消息传递
+   - 自动重连机制
+   - 连接状态显示
+
+3. **会话管理**
+   - 独立的会话ID管理
+   - 会话状态跟踪
+   - 支持多用户同时使用
+
+4. **增强功能**
+   - 思考模式开关
+   - 字符计数显示
+   - 响应时间监控
+   - 错误处理和重试
+
+### 技术栈
+- **后端**: FastAPI + WebSocket
+- **前端**: HTML5 + CSS3 + JavaScript (ES6+)
+- **模板引擎**: Jinja2
+- **UI 框架**: Bootstrap 5
+- **图标**: Font Awesome
+
+### 项目结构（Web 版本）
+
+```
+oipromot/
+├── web_app.py              # Web 应用主文件
+├── run_web.py              # 启动脚本
+├── simple_cli.py           # 原始 CLI 版本
+├── pyproject.toml          # uv 项目配置和依赖
+├── templates/
+│   └── index.html         # 主页模板
+├── static/
+│   ├── css/
+│   │   └── style.css      # 样式文件
+│   └── js/
+│       └── app.js         # 前端逻辑
+└── .env                   # 环境配置
+```
+
 ## 📝 开发说明
 
 ### 核心特点
@@ -214,12 +323,16 @@ $ python simple_cli.py
 - 完整的会话状态管理
 - 优雅的错误处理和回退机制
 - 响应时间监控
+- WebSocket 实时通信
+- 现代化 Web 界面
 
 ### 扩展点
 - 支持更多 AI 模型提供商
 - 添加更多专业领域的需求模板
 - 集成更多输出格式选项
 - 添加历史记录和会话管理
+- 用户认证和权限管理
+- 多语言国际化支持
 
 ## 📝 许可证
 
