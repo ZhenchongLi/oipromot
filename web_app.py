@@ -33,8 +33,15 @@ class ProxyHeadersMiddleware(BaseHTTPMiddleware):
         # Update request scope for correct URL generation
         if forwarded_proto:
             request.scope["scheme"] = forwarded_proto
+        
         if forwarded_host:
-            request.scope["server"] = (forwarded_host, int(forwarded_port) if forwarded_port else 80)
+            # Use the forwarded port if provided, otherwise use 8888 (nginx port)
+            if forwarded_port:
+                port = int(forwarded_port)
+            else:
+                # Default to 8888 for this specific nginx setup
+                port = 8888
+            request.scope["server"] = (forwarded_host, port)
         
         response = await call_next(request)
         return response
