@@ -10,12 +10,15 @@ dependencies = [
     "uvicorn[standard]>=0.24.0",
     "jinja2>=3.1.2",
     "python-multipart>=0.0.6",
+    "aiohttp>=3.9.0",
+    "httpx[socks]>=0.24.0",
 ]
 
 [project.scripts]
 simple-cli = "simple_cli:cli_main"
 web-app = "run_web:main"
 test-install = "test_install:main"
+config-check = "config_check:config_main"
 
 [project.optional-dependencies]
 dev = [
