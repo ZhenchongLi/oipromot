@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-simple-cli = "simple_cli:main"
+simple-cli = "simple_cli:cli_main"
 web-app = "run_web:main"
 test-install = "test_install:main"
 
