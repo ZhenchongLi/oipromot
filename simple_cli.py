@@ -148,7 +148,7 @@ class RequirementOptimizer:
 
         if is_chinese:
             if self.no_think:
-                system_prompt = """直接转化用户输入为清晰的需求描述。只输出最终结果，不要思考过程，不要解释。"""
+                system_prompt = """直接转化用户输入为清晰的需求描述。请以列表形式输出，每个需求点用数字编号。只输出最终结果，不要思考过程，不要解释。"""
             else:
                 system_prompt = """你是一个需求分析专家，同时也是Excel和Word专家。你的任务是将用户的原始输入转化为清晰、准确的需求描述。
 
@@ -159,11 +159,12 @@ class RequirementOptimizer:
 4. 去除冗余信息
 5. 确保描述完整且明确
 6. 如果涉及Excel或Word功能，准确理解相关术语和需求
+7. 输出结果必须以列表形式展示，每个需求点用数字编号
 
 请将以下用户输入转化为清晰的需求描述："""
         else:
             if self.no_think:
-                system_prompt = """Transform user input into clear requirement description. Output final result only, no thinking process, no explanation."""
+                system_prompt = """Transform user input into clear requirement description. Please output in list format, with each requirement point numbered. Output final result only, no thinking process, no explanation."""
             else:
                 system_prompt = """You are a requirement analysis expert and also an Excel and Word expert. Your task is to transform the user's raw input into a clear, accurate requirement description.
 
@@ -174,6 +175,7 @@ Requirements:
 4. Remove redundant information
 5. Ensure the description is complete and clear
 6. If involving Excel or Word features, accurately understand related terms and requirements
+7. Output result must be in list format, with each requirement point numbered
 
 Please transform the following user input into a clear requirement description:"""
 
@@ -201,7 +203,7 @@ Please transform the following user input into a clear requirement description:"
 
         if is_chinese:
             if self.no_think:
-                system_prompt = """根据用户反馈调整需求描述。只输出最终结果，不要思考过程。"""
+                system_prompt = """根据用户反馈调整需求描述。请以列表形式输出，每个需求点用数字编号。只输出最终结果，不要思考过程。"""
             else:
                 system_prompt = """你是一个需求分析专家。根据用户的反馈，调整和优化之前的需求描述。
 
@@ -210,11 +212,12 @@ Please transform the following user input into a clear requirement description:"
 2. 保持专业和简洁
 3. 确保调整后的描述更符合用户意图
 4. 不要添加实现建议，只描述需求
+5. 输出结果必须以列表形式展示，每个需求点用数字编号
 
 请提供调整后的需求描述："""
         else:
             if self.no_think:
-                system_prompt = """Adjust requirement description based on user feedback. Output final result only, no thinking process."""
+                system_prompt = """Adjust requirement description based on user feedback. Please output in list format, with each requirement point numbered. Output final result only, no thinking process."""
             else:
                 system_prompt = """You are a requirement analysis expert. Based on user feedback, adjust and optimize the previous requirement description.
 
@@ -223,6 +226,7 @@ Requirements:
 2. Keep it professional and concise
 3. Ensure the adjusted description better matches user intent
 4. Do not add implementation suggestions, only describe requirements
+5. Output result must be in list format, with each requirement point numbered
 
 Please provide the adjusted requirement description:"""
 
