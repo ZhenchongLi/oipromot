@@ -12,11 +12,32 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import Headers
 from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
 
 # Load environment variables
 load_dotenv()
+
+
+class ProxyHeadersMiddleware(BaseHTTPMiddleware):
+    """Middleware to handle reverse proxy headers for correct URL generation."""
+    
+    async def dispatch(self, request: Request, call_next):
+        # Handle X-Forwarded-Proto and X-Forwarded-Host headers
+        forwarded_proto = request.headers.get("X-Forwarded-Proto")
+        forwarded_host = request.headers.get("X-Forwarded-Host")
+        forwarded_port = request.headers.get("X-Forwarded-Port")
+        
+        # Update request scope for correct URL generation
+        if forwarded_proto:
+            request.scope["scheme"] = forwarded_proto
+        if forwarded_host:
+            request.scope["server"] = (forwarded_host, int(forwarded_port) if forwarded_port else 80)
+        
+        response = await call_next(request)
+        return response
 
 
 class ConnectionManager:
@@ -96,6 +117,9 @@ class ConnectionManager:
 
 # FastAPI app setup
 app = FastAPI(title="需求优化器", description="交互式需求优化web应用")
+
+# Add proxy headers middleware (must be added before other middlewares)
+app.add_middleware(ProxyHeadersMiddleware)
 
 # Add session middleware
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-this-in-production")

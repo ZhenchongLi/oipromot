@@ -95,12 +95,33 @@ class ConfigChecker:
             return False
         
         try:
-            # 尝试连接API根路径
+            # 尝试连接API根路径和models端点
             async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                # 先尝试访问models端点，这通常是更好的健康检查方式
+                models_url = f"{api_url.rstrip('/')}/models"
+                
+                api_key = os.getenv("API_KEY")
+                headers = {}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                
+                async with session.get(models_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as response:
                     if response.status == 200:
                         print(f"✅ API服务器可访问: {api_url}")
                         return True
+                    elif response.status == 401:
+                        print(f"⚠️  API需要认证，但可访问: {api_url}")
+                        return True  # 服务器可访问，只是需要认证
+                    elif response.status == 404:
+                        # 如果models端点不存在，尝试根路径
+                        async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as root_response:
+                            if root_response.status in [200, 404]:  # 404也表示服务器可访问
+                                print(f"✅ API服务器可访问: {api_url}")
+                                return True
+                            else:
+                                print(f"⚠️  API服务器响应异常: HTTP {root_response.status}")
+                                self.suggestions.append("检查API服务器是否正常运行")
+                                return False
                     else:
                         print(f"⚠️  API服务器响应异常: HTTP {response.status}")
                         self.suggestions.append("检查API服务器是否正常运行")
@@ -140,7 +161,8 @@ class ConfigChecker:
             data = {
                 "model": model_name,
                 "messages": [{"role": "user", "content": "hello"}],
-                "max_tokens": 10
+                "max_tokens": 10,
+                "enable_thinking": False  # Required for some APIs like Qwen/Dashscope
             }
             
             async with aiohttp.ClientSession() as session:
@@ -166,11 +188,32 @@ class ConfigChecker:
                         self.suggestions.append("检查AI_MODEL配置，确保模型名称正确")
                         return False
                     else:
-                        response_text = await response.text()
-                        print(f"❌ 模型调用失败: HTTP {response.status}")
-                        print(f"响应: {response_text[:200]}...")
-                        self.issues.append(f"模型调用失败: HTTP {response.status}")
-                        return False
+                        try:
+                            response_text = await response.text()
+                            print(f"❌ 模型调用失败: HTTP {response.status}")
+                            
+                            # 尝试解析错误信息
+                            if response_text:
+                                # 限制显示的响应长度
+                                display_text = response_text[:300] + "..." if len(response_text) > 300 else response_text
+                                print(f"响应: {display_text}")
+                                
+                                # 检查常见错误模式
+                                if "enable_thinking" in response_text.lower():
+                                    self.suggestions.append("API要求设置enable_thinking参数，这已在最新版本中修复")
+                                elif "invalid_request_error" in response_text.lower():
+                                    self.suggestions.append("请求参数有误，请检查模型名称和API兼容性")
+                                elif "rate_limit" in response_text.lower():
+                                    self.suggestions.append("API调用频率限制，请稍后重试")
+                                else:
+                                    self.suggestions.append("模型调用失败，请检查API服务器和模型配置")
+                                    
+                            self.issues.append(f"模型调用失败: HTTP {response.status}")
+                            return False
+                        except Exception:
+                            print(f"❌ 模型调用失败: HTTP {response.status} (响应解析失败)")
+                            self.issues.append(f"模型调用失败: HTTP {response.status}")
+                            return False
         
         except asyncio.TimeoutError:
             print(f"❌ 模型调用超时")
