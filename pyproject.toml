@@ -2,7 +2,7 @@
 name = "oipromot"
 version = "0.1.0"
 description = "Interactive requirement optimizer with CLI and Web interface"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "openai>=1.3.5",
     "python-dotenv>=1.0.0",
