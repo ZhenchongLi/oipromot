@@ -12,6 +12,7 @@ dependencies = [
     "python-multipart>=0.0.6",
     "aiohttp>=3.9.0",
     "httpx[socks]>=0.24.0",
+    "itsdangerous>=2.1.2",
 ]
 
 [project.scripts]

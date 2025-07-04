@@ -5,12 +5,18 @@ Web application version of the requirement optimizer using shared core logic.
 
 import json
 import uuid
-from typing import Dict, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import HTMLResponse
+import os
+from typing import Dict
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
+from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
+
+# Load environment variables
+load_dotenv()
 
 
 class ConnectionManager:
@@ -91,9 +97,28 @@ class ConnectionManager:
 # FastAPI app setup
 app = FastAPI(title="需求优化器", description="交互式需求优化web应用")
 
+# Add session middleware
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-this-in-production")
+
 # Static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Get access password from environment
+ACCESS_PWD = os.getenv("ACCESS_PWD")
+
+
+def check_auth(request: Request):
+    """Check if user is authenticated."""
+    if not ACCESS_PWD:
+        return True  # No password required if not set
+    return request.session.get("authenticated") == True
+
+
+def require_auth(request: Request):
+    """Dependency to require authentication."""
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
 
 # Connection manager
 manager = ConnectionManager()
@@ -102,12 +127,48 @@ manager = ConnectionManager()
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
     """Serve the main page."""
+    if not check_auth(request):
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def get_login(request: Request):
+    """Serve the login page."""
+    if not ACCESS_PWD:
+        return RedirectResponse(url="/", status_code=302)
+    if check_auth(request):
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.post("/login")
+async def post_login(request: Request, password: str = Form(...)):
+    """Handle login form submission."""
+    if not ACCESS_PWD:
+        return RedirectResponse(url="/", status_code=302)
+    
+    if password == ACCESS_PWD:
+        request.session["authenticated"] = True
+        return RedirectResponse(url="/", status_code=302)
+    else:
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "密码错误"
+        })
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    """Handle logout."""
+    request.session.pop("authenticated", None)
+    return RedirectResponse(url="/login", status_code=302)
 
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time communication."""
+    # For WebSocket, we'll accept the connection and handle auth via message
     await manager.connect(websocket, session_id)
     try:
         while True:
