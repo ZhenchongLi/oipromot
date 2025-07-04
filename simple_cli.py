@@ -9,6 +9,7 @@ import argparse
 import re
 import signal
 import sys
+import time
 from typing import Optional
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
@@ -236,6 +237,7 @@ Please provide the adjusted requirement description:"""
 
     async def _call_api(self, system_prompt: str, user_input: str) -> Optional[str]:
         """Call OpenAI-compatible API using OpenAI client."""
+        start_time = time.time()
         try:
             # Configure parameters based on no-think mode
             temperature = 0.1 if self.no_think else 0.3
@@ -263,17 +265,25 @@ Please provide the adjusted requirement description:"""
                 }
 
             response = await self.client.chat.completions.create(**request_params)
-
+            
+            # Calculate response time
+            response_time = time.time() - start_time
+            
             result = response.choices[0].message.content.strip()
             
             # Remove thinking tags if they appear (fallback for when enable_thinking doesn't work)
             if self.no_think and '<think>' in result:
                 result = re.sub(r'<think>.*?</think>', '', result, flags=re.DOTALL).strip()
             
+            # Display response time
+            mode_text = " (No-Think)" if self.no_think else ""
+            print(f"⏱️ Response time: {response_time:.2f}s{mode_text}")
+            
             return result
 
         except Exception as e:
-            print(f"API error: {e}")
+            response_time = time.time() - start_time
+            print(f"API error: {e} (after {response_time:.2f}s)")
             return None
 
     def _simple_clean(self, user_input: str) -> str:
