@@ -213,6 +213,13 @@ class RequirementOptimizerApp {
         const formattedContent = this.formatContent(content);
         contentDiv.innerHTML = formattedContent;
 
+        // 添加复制按钮
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.innerHTML = '<i class="fas fa-copy"></i>';
+        copyButton.title = '复制回答';
+        copyButton.onclick = () => this.copyToClipboard(content, copyButton);
+
         const metaDiv = document.createElement('div');
         metaDiv.className = 'message-meta';
 
@@ -229,6 +236,7 @@ class RequirementOptimizerApp {
         metaDiv.appendChild(rightMeta);
 
         messageDiv.appendChild(contentDiv);
+        messageDiv.appendChild(copyButton);
         messageDiv.appendChild(metaDiv);
 
         this.elements.chatMessages.appendChild(messageDiv);
@@ -332,6 +340,56 @@ class RequirementOptimizerApp {
         setTimeout(() => {
             this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
         }, 100);
+    }
+
+    copyToClipboard(text, button) {
+        // 移除HTML标签，获取纯文本
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = this.formatContent(text);
+        const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
+        navigator.clipboard.writeText(plainText).then(() => {
+            // 成功复制的视觉反馈
+            const originalIcon = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i>';
+            button.classList.add('copied');
+            
+            setTimeout(() => {
+                button.innerHTML = originalIcon;
+                button.classList.remove('copied');
+            }, 2000);
+        }).catch(err => {
+            console.error('复制失败:', err);
+            // 降级处理：使用传统方法
+            this.fallbackCopyToClipboard(plainText, button);
+        });
+    }
+
+    fallbackCopyToClipboard(text, button) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            const originalIcon = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i>';
+            button.classList.add('copied');
+            
+            setTimeout(() => {
+                button.innerHTML = originalIcon;
+                button.classList.remove('copied');
+            }, 2000);
+        } catch (err) {
+            console.error('降级复制也失败:', err);
+        }
+        
+        document.body.removeChild(textArea);
     }
 }
 
