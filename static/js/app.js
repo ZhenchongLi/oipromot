@@ -213,13 +213,6 @@ class RequirementOptimizerApp {
         const formattedContent = this.formatContent(content);
         contentDiv.innerHTML = formattedContent;
 
-        // 添加复制按钮
-        const copyButton = document.createElement('button');
-        copyButton.className = 'copy-button';
-        copyButton.innerHTML = '<i class="fas fa-copy"></i>';
-        copyButton.title = '复制回答';
-        copyButton.onclick = () => this.copyToClipboard(content, copyButton);
-
         const metaDiv = document.createElement('div');
         metaDiv.className = 'message-meta';
 
@@ -232,11 +225,20 @@ class RequirementOptimizerApp {
             <span class="thinking-mode">(${mode})</span>
         `;
 
+        // 添加复制按钮到右侧元数据中
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.innerHTML = '<i class="fas fa-copy"></i>';
+        copyButton.title = '复制回答';
+        copyButton.onclick = () => this.copyToClipboard(content, copyButton);
+
+        // 将复制按钮添加到右侧元数据中
+        rightMeta.appendChild(copyButton);
+
         metaDiv.appendChild(leftMeta);
         metaDiv.appendChild(rightMeta);
 
         messageDiv.appendChild(contentDiv);
-        messageDiv.appendChild(copyButton);
         messageDiv.appendChild(metaDiv);
 
         this.elements.chatMessages.appendChild(messageDiv);
@@ -353,7 +355,7 @@ class RequirementOptimizerApp {
             const originalIcon = button.innerHTML;
             button.innerHTML = '<i class="fas fa-check"></i>';
             button.classList.add('copied');
-            
+
             setTimeout(() => {
                 button.innerHTML = originalIcon;
                 button.classList.remove('copied');
@@ -374,13 +376,13 @@ class RequirementOptimizerApp {
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        
+
         try {
             document.execCommand('copy');
             const originalIcon = button.innerHTML;
             button.innerHTML = '<i class="fas fa-check"></i>';
             button.classList.add('copied');
-            
+
             setTimeout(() => {
                 button.innerHTML = originalIcon;
                 button.classList.remove('copied');
@@ -388,7 +390,7 @@ class RequirementOptimizerApp {
         } catch (err) {
             console.error('降级复制也失败:', err);
         }
-        
+
         document.body.removeChild(textArea);
     }
 }
