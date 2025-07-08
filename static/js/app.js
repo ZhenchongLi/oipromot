@@ -350,21 +350,31 @@ class RequirementOptimizerApp {
         tempDiv.innerHTML = this.formatContent(text);
         const plainText = tempDiv.textContent || tempDiv.innerText || '';
 
-        navigator.clipboard.writeText(plainText).then(() => {
-            // 成功复制的视觉反馈
-            const originalIcon = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-check"></i>';
-            button.classList.add('copied');
-
-            setTimeout(() => {
-                button.innerHTML = originalIcon;
-                button.classList.remove('copied');
-            }, 2000);
-        }).catch(err => {
-            console.error('复制失败:', err);
-            // 降级处理：使用传统方法
+        // 检查 navigator.clipboard 是否可用
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(plainText).then(() => {
+                // 成功复制的视觉反馈
+                this.showCopySuccess(button);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                // 降级处理：使用传统方法
+                this.fallbackCopyToClipboard(plainText, button);
+            });
+        } else {
+            // 直接使用降级方法
             this.fallbackCopyToClipboard(plainText, button);
-        });
+        }
+    }
+
+    showCopySuccess(button) {
+        const originalIcon = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.classList.add('copied');
+
+        setTimeout(() => {
+            button.innerHTML = originalIcon;
+            button.classList.remove('copied');
+        }, 2000);
     }
 
     fallbackCopyToClipboard(text, button) {
@@ -379,14 +389,7 @@ class RequirementOptimizerApp {
 
         try {
             document.execCommand('copy');
-            const originalIcon = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-check"></i>';
-            button.classList.add('copied');
-
-            setTimeout(() => {
-                button.innerHTML = originalIcon;
-                button.classList.remove('copied');
-            }, 2000);
+            this.showCopySuccess(button);
         } catch (err) {
             console.error('降级复制也失败:', err);
         }
