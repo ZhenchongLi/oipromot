@@ -13,6 +13,10 @@ dependencies = [
     "aiohttp>=3.9.0",
     "httpx[socks]>=0.24.0",
     "itsdangerous>=2.1.2",
+    "duckdb>=0.9.0",
+    "duckdb-engine>=0.9.0",
+    "sqlmodel>=0.0.14",
+    "bcrypt>=4.0.0",
 ]
 
 [project.scripts]

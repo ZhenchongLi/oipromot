@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.datastructures import Headers
 from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
+from models import DatabaseManager
 
 # Load environment variables
 load_dotenv()
@@ -135,21 +136,30 @@ app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-this-in
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Database manager
+db_manager = DatabaseManager()
+
 # Get access password from environment
 ACCESS_PWD = os.getenv("ACCESS_PWD")
 
 
 def check_auth(request: Request):
     """Check if user is authenticated."""
-    if not ACCESS_PWD:
-        return True  # No password required if not set
-    return request.session.get("authenticated") == True
+    return request.session.get("user_id") is not None
 
 
 def require_auth(request: Request):
     """Dependency to require authentication."""
     if not check_auth(request):
         raise HTTPException(status_code=401, detail="Authentication required")
+
+
+def get_current_user(request: Request):
+    """Get current user from session."""
+    user_id = request.session.get("user_id")
+    if user_id:
+        return db_manager.get_user_by_id(user_id)
+    return None
 
 # Connection manager
 manager = ConnectionManager()
@@ -166,33 +176,29 @@ async def get_index(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def get_login(request: Request):
     """Serve the login page."""
-    if not ACCESS_PWD:
-        return RedirectResponse(url="/", status_code=302)
     if check_auth(request):
         return RedirectResponse(url="/", status_code=302)
     return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.post("/login")
-async def post_login(request: Request, password: str = Form(...)):
+async def post_login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Handle login form submission."""
-    if not ACCESS_PWD:
-        return RedirectResponse(url="/", status_code=302)
-    
-    if password == ACCESS_PWD:
-        request.session["authenticated"] = True
+    user = db_manager.authenticate_user(username, password)
+    if user:
+        request.session["user_id"] = user.id
         return RedirectResponse(url="/", status_code=302)
     else:
         return templates.TemplateResponse("login.html", {
             "request": request,
-            "error": "密码错误"
+            "error": "用户名或密码错误"
         })
 
 
 @app.get("/logout")
 async def logout(request: Request):
     """Handle logout."""
-    request.session.pop("authenticated", None)
+    request.session.pop("user_id", None)
     return RedirectResponse(url="/login", status_code=302)
 
 
