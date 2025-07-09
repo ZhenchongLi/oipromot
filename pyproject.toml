@@ -17,6 +17,7 @@ dependencies = [
     "duckdb-engine>=0.9.0",
     "sqlmodel>=0.0.14",
     "bcrypt>=4.0.0",
+    "orjson>=3.9.0",
 ]
 
 [project.scripts]

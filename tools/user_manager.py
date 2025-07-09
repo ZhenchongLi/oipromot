@@ -5,6 +5,11 @@ User management script for creating and managing users.
 
 import argparse
 import getpass
+import sys
+import os
+
+# Add parent directory to path to import models
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models import DatabaseManager
 
 

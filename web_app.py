@@ -3,7 +3,7 @@
 Web application version of the requirement optimizer using shared core logic.
 """
 
-import json
+import orjson
 import uuid
 from typing import Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Form
@@ -12,7 +12,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.datastructures import Headers
 from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
 from models import DatabaseManager
@@ -72,7 +71,7 @@ class ConnectionManager:
     async def send_message(self, session_id: str, message: dict):
         """Send message to specific session."""
         if session_id in self.active_connections:
-            await self.active_connections[session_id].send_text(json.dumps(message))
+            await self.active_connections[session_id].send_text(orjson.dumps(message).decode())
 
     async def handle_message(self, session_id: str, message: dict):
         """Handle incoming messages from clients."""
@@ -206,7 +205,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
+            message = orjson.loads(data)
             await manager.handle_message(session_id, message)
     except WebSocketDisconnect:
         manager.disconnect(session_id)
