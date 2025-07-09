@@ -172,3 +172,11 @@ Desktop.ini
 
 # uv
 uv.lock
+
+# Database files
+*.db
+*.db-wal
+*.db-shm
+
+# Data folder
+data/

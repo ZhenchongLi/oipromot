@@ -5,7 +5,6 @@ Web application version of the requirement optimizer using shared core logic.
 
 import json
 import uuid
-import os
 from typing import Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -138,9 +137,6 @@ templates = Jinja2Templates(directory="templates")
 
 # Database manager
 db_manager = DatabaseManager()
-
-# Get access password from environment
-ACCESS_PWD = os.getenv("ACCESS_PWD")
 
 
 def check_auth(request: Request):

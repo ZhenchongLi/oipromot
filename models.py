@@ -8,6 +8,7 @@ from typing import Optional
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from datetime import datetime
 import bcrypt
+from database_config import db_config
 
 
 class User(SQLModel, table=True):
@@ -25,9 +26,9 @@ class User(SQLModel, table=True):
 class DatabaseManager:
     """Database connection and operations manager."""
     
-    def __init__(self, db_path: str = "app.db"):
+    def __init__(self):
         """Initialize database connection."""
-        self.engine = create_engine(f"duckdb:///{db_path}")
+        self.engine = create_engine(db_config.database_url)
         self.create_tables()
     
     def create_tables(self):
