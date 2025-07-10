@@ -27,6 +27,9 @@
                         <button class="btn btn-primary btn-sm mb-2" id="new-conversation">
                             <i class="fas fa-plus"></i> 新对话
                         </button>
+                        <button class="btn btn-outline-info btn-sm mb-2" id="show-favorites">
+                            <i class="fas fa-star"></i> 命令收藏
+                        </button>
                         <a href="/logout" class="btn btn-outline-secondary btn-sm mb-2">
                             <i class="fas fa-sign-out-alt"></i> 退出登录
                         </a>
@@ -80,6 +83,67 @@
                             </small>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Favorites Modal -->
+    <div class="modal fade" id="favoritesModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-star"></i> 命令收藏夹
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3 d-flex gap-2">
+                        <button class="btn btn-success btn-sm" id="add-favorite">
+                            <i class="fas fa-plus"></i> 添加命令
+                        </button>
+                        <div class="flex-grow-1">
+                            <input type="text" class="form-control form-control-sm" id="search-favorites" placeholder="搜索命令...">
+                        </div>
+                    </div>
+                    <div id="favorites-list">
+                        <!-- Favorites will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Favorite Modal -->
+    <div class="modal fade" id="editFavoriteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editFavoriteModalTitle">
+                        <i class="fas fa-star"></i> 添加命令收藏
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="favoriteForm">
+                        <div class="mb-3">
+                            <label for="favoriteCommand" class="form-label">命令 *</label>
+                            <input type="text" class="form-control" id="favoriteCommand" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="favoriteDescription" class="form-label">描述</label>
+                            <textarea class="form-control" id="favoriteDescription" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="favoriteCategory" class="form-label">分类</label>
+                            <input type="text" class="form-control" id="favoriteCategory">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveFavorite">保存</button>
                 </div>
             </div>
         </div>

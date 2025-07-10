@@ -4,7 +4,7 @@ Database models using SQLModel and DuckDB.
 """
 
 import uuid
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from datetime import datetime
 import bcrypt
@@ -21,6 +21,18 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     last_login: Optional[datetime] = Field(default=None)
+
+
+class FavoriteCommand(SQLModel, table=True):
+    """Favorite command model for users."""
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    command: str = Field(index=True)
+    description: Optional[str] = Field(default=None)
+    category: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
 
 class DatabaseManager:
@@ -108,3 +120,109 @@ class DatabaseManager:
                     last_login=user.last_login
                 )
             return None
+    
+    def create_favorite_command(self, user_id: str, command: str, description: Optional[str] = None, category: Optional[str] = None) -> FavoriteCommand:
+        """Create a new favorite command."""
+        favorite = FavoriteCommand(
+            user_id=user_id,
+            command=command,
+            description=description,
+            category=category
+        )
+        
+        with self.get_session() as session:
+            session.add(favorite)
+            session.commit()
+            session.refresh(favorite)
+            return favorite
+    
+    def get_user_favorite_commands(self, user_id: str) -> List[FavoriteCommand]:
+        """Get all favorite commands for a user."""
+        with self.get_session() as session:
+            statement = select(FavoriteCommand).where(FavoriteCommand.user_id == user_id).order_by(FavoriteCommand.created_at.desc())
+            favorites = session.exec(statement).all()
+            return [FavoriteCommand(
+                id=fav.id,
+                user_id=fav.user_id,
+                command=fav.command,
+                description=fav.description,
+                category=fav.category,
+                created_at=fav.created_at,
+                updated_at=fav.updated_at
+            ) for fav in favorites]
+    
+    def get_favorite_command_by_id(self, favorite_id: str, user_id: str) -> Optional[FavoriteCommand]:
+        """Get favorite command by ID for a specific user."""
+        with self.get_session() as session:
+            statement = select(FavoriteCommand).where(
+                FavoriteCommand.id == favorite_id,
+                FavoriteCommand.user_id == user_id
+            )
+            favorite = session.exec(statement).first()
+            if favorite:
+                return FavoriteCommand(
+                    id=favorite.id,
+                    user_id=favorite.user_id,
+                    command=favorite.command,
+                    description=favorite.description,
+                    category=favorite.category,
+                    created_at=favorite.created_at,
+                    updated_at=favorite.updated_at
+                )
+            return None
+    
+    def update_favorite_command(self, favorite_id: str, user_id: str, command: Optional[str] = None, description: Optional[str] = None, category: Optional[str] = None) -> Optional[FavoriteCommand]:
+        """Update a favorite command."""
+        with self.get_session() as session:
+            statement = select(FavoriteCommand).where(
+                FavoriteCommand.id == favorite_id,
+                FavoriteCommand.user_id == user_id
+            )
+            favorite = session.exec(statement).first()
+            
+            if favorite:
+                if command is not None:
+                    favorite.command = command
+                if description is not None:
+                    favorite.description = description
+                if category is not None:
+                    favorite.category = category
+                favorite.updated_at = datetime.now()
+                
+                session.add(favorite)
+                session.commit()
+                session.refresh(favorite)
+                return FavoriteCommand(
+                    id=favorite.id,
+                    user_id=favorite.user_id,
+                    command=favorite.command,
+                    description=favorite.description,
+                    category=favorite.category,
+                    created_at=favorite.created_at,
+                    updated_at=favorite.updated_at
+                )
+            return None
+    
+    def delete_favorite_command(self, favorite_id: str, user_id: str) -> bool:
+        """Delete a favorite command."""
+        with self.get_session() as session:
+            statement = select(FavoriteCommand).where(
+                FavoriteCommand.id == favorite_id,
+                FavoriteCommand.user_id == user_id
+            )
+            favorite = session.exec(statement).first()
+            
+            if favorite:
+                session.delete(favorite)
+                session.commit()
+                return True
+            return False
+    
+    def check_favorite_exists(self, user_id: str, command: str) -> bool:
+        """Check if a command is already favorited by user."""
+        with self.get_session() as session:
+            statement = select(FavoriteCommand).where(
+                FavoriteCommand.user_id == user_id,
+                FavoriteCommand.command == command
+            )
+            return session.exec(statement).first() is not None

@@ -9,6 +9,7 @@ class RequirementOptimizerApp {
         this.setupEventListeners();
         this.connectWebSocket();
         this.updateSessionId();
+        this.initializeAuth();
     }
 
     generateSessionId() {
@@ -24,6 +25,7 @@ class RequirementOptimizerApp {
             messageInput: document.getElementById('message-input'),
             sendButton: document.getElementById('send-button'),
             newConversationButton: document.getElementById('new-conversation'),
+            showFavoritesButton: document.getElementById('show-favorites'),
 
             charCount: document.getElementById('char-count')
         };
@@ -50,7 +52,13 @@ class RequirementOptimizerApp {
             this.startNewConversation();
         });
 
+        // 收藏夹按钮
+        this.elements.showFavoritesButton.addEventListener('click', () => {
+            this.showFavorites();
+        });
 
+        // 收藏夹相关事件
+        this.setupFavoriteEvents();
     }
 
     updateSessionId() {
@@ -220,20 +228,35 @@ class RequirementOptimizerApp {
         leftMeta.innerHTML = `<i class="fas fa-robot"></i> ${isRefined ? 'AI调整后回复' : 'AI回复'}`;
 
         const rightMeta = document.createElement('div');
-        rightMeta.innerHTML = `
-            <span class="response-time">⏱️ ${responseTime.toFixed(2)}s</span>
-            <span class="thinking-mode">(${mode})</span>
-        `;
-
-        // 添加复制按钮到右侧元数据中
+        
+        // 添加时间和模式信息
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'response-time';
+        timeSpan.innerHTML = `⏱️ ${responseTime.toFixed(2)}s`;
+        
+        const modeSpan = document.createElement('span');
+        modeSpan.className = 'thinking-mode';
+        modeSpan.innerHTML = `(${mode})`;
+        
+        // 添加复制按钮
         const copyButton = document.createElement('button');
         copyButton.className = 'copy-button';
         copyButton.innerHTML = '<i class="fas fa-copy"></i>';
         copyButton.title = '复制回答';
         copyButton.onclick = () => this.copyToClipboard(content, copyButton);
 
-        // 将复制按钮添加到右侧元数据中
+        // 添加收藏按钮
+        const favoriteButton = document.createElement('button');
+        favoriteButton.className = 'favorite-button';
+        favoriteButton.innerHTML = '<i class="fas fa-star"></i>';
+        favoriteButton.title = '收藏此回复';
+        favoriteButton.onclick = () => this.favoriteReply(content, favoriteButton);
+
+        // 将所有元素添加到右侧元数据中
+        rightMeta.appendChild(timeSpan);
+        rightMeta.appendChild(modeSpan);
         rightMeta.appendChild(copyButton);
+        rightMeta.appendChild(favoriteButton);
 
         metaDiv.appendChild(leftMeta);
         metaDiv.appendChild(rightMeta);
@@ -395,6 +418,358 @@ class RequirementOptimizerApp {
         }
 
         document.body.removeChild(textArea);
+    }
+
+    // 收藏夹相关功能
+    setupFavoriteEvents() {
+        // 添加收藏按钮事件
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'add-favorite') {
+                this.showAddFavoriteModal();
+            }
+            if (e.target.id === 'saveFavorite') {
+                this.saveFavorite();
+            }
+        });
+
+        // 收藏夹模态框中的事件代理
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('use-favorite')) {
+                this.useFavorite(e.target.dataset.command, e.target);
+            }
+            if (e.target.classList.contains('edit-favorite')) {
+                this.editFavorite(e.target.dataset.id);
+            }
+            if (e.target.classList.contains('delete-favorite')) {
+                this.deleteFavorite(e.target.dataset.id);
+            }
+        });
+
+        // 搜索功能
+        document.addEventListener('input', (e) => {
+            if (e.target.id === 'search-favorites') {
+                this.searchFavorites(e.target.value);
+            }
+        });
+    }
+
+    showFavorites() {
+        this.loadFavorites();
+        const modal = new bootstrap.Modal(document.getElementById('favoritesModal'));
+        modal.show();
+        
+        // 清空搜索框
+        const searchInput = document.getElementById('search-favorites');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+    }
+
+    async loadFavorites() {
+        try {
+            const response = await fetch('/api/favorites', {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load favorites');
+            }
+            
+            const favorites = await response.json();
+            this.allFavorites = favorites; // 存储所有收藏以便搜索
+            this.renderFavorites(favorites);
+        } catch (error) {
+            console.error('Error loading favorites:', error);
+            document.getElementById('favorites-list').innerHTML = '<div class="alert alert-danger">加载收藏夹失败</div>';
+        }
+    }
+
+    renderFavorites(favorites) {
+        const listContainer = document.getElementById('favorites-list');
+        
+        if (favorites.length === 0) {
+            listContainer.innerHTML = '<div class="alert alert-info">还没有收藏的命令</div>';
+            return;
+        }
+
+        const html = favorites.map(fav => `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        ${fav.command}
+                        ${fav.category ? `<span class="badge bg-secondary ms-2">${fav.category}</span>` : ''}
+                    </h6>
+                    ${fav.description ? `<p class="card-text" style="max-height: 100px; overflow-y: auto; font-size: 0.9rem;">${fav.description.replace(/\n/g, '<br>')}</p>` : ''}
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary use-favorite" data-command="${fav.description || fav.command}">
+                            <i class="fas fa-copy"></i> 复制
+                        </button>
+                        <button class="btn btn-outline-secondary edit-favorite" data-id="${fav.id}">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn btn-outline-danger delete-favorite" data-id="${fav.id}">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        listContainer.innerHTML = html;
+    }
+
+    showAddFavoriteModal() {
+        document.getElementById('editFavoriteModalTitle').textContent = '添加命令收藏';
+        document.getElementById('favoriteForm').reset();
+        document.getElementById('favoriteForm').dataset.mode = 'add';
+        
+        const modal = new bootstrap.Modal(document.getElementById('editFavoriteModal'));
+        modal.show();
+    }
+
+    async editFavorite(favoriteId) {
+        try {
+            const response = await fetch(`/api/favorites/${favoriteId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load favorite');
+            }
+            
+            const favorite = await response.json();
+            
+            document.getElementById('editFavoriteModalTitle').textContent = '编辑命令收藏';
+            document.getElementById('favoriteCommand').value = favorite.command;
+            document.getElementById('favoriteDescription').value = favorite.description || '';
+            document.getElementById('favoriteCategory').value = favorite.category || '';
+            document.getElementById('favoriteForm').dataset.mode = 'edit';
+            document.getElementById('favoriteForm').dataset.id = favoriteId;
+            
+            const modal = new bootstrap.Modal(document.getElementById('editFavoriteModal'));
+            modal.show();
+        } catch (error) {
+            console.error('Error loading favorite:', error);
+            alert('加载收藏命令失败');
+        }
+    }
+
+    async saveFavorite() {
+        const form = document.getElementById('favoriteForm');
+        const formData = new FormData();
+        
+        formData.append('command', document.getElementById('favoriteCommand').value);
+        formData.append('description', document.getElementById('favoriteDescription').value);
+        formData.append('category', document.getElementById('favoriteCategory').value);
+        
+        const mode = form.dataset.mode;
+        const url = mode === 'add' ? '/api/favorites' : `/api/favorites/${form.dataset.id}`;
+        const method = mode === 'add' ? 'POST' : 'PUT';
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to save favorite');
+            }
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editFavoriteModal'));
+            modal.hide();
+            
+            // 重新加载收藏夹列表
+            this.loadFavorites();
+        } catch (error) {
+            console.error('Error saving favorite:', error);
+            alert('保存收藏命令失败');
+        }
+    }
+
+    async deleteFavorite(favoriteId) {
+        if (!confirm('确定要删除这个收藏命令吗？')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/favorites/${favoriteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to delete favorite');
+            }
+            
+            // 重新加载收藏夹列表
+            this.loadFavorites();
+        } catch (error) {
+            console.error('Error deleting favorite:', error);
+            alert('删除收藏命令失败');
+        }
+    }
+
+    useFavorite(content, button) {
+        // 复制到剪贴板
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(content).then(() => {
+                // 显示复制成功提示
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败');
+            });
+        } else {
+            // 降级处理
+            const textArea = document.createElement('textarea');
+            textArea.value = content;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                    }, 2000);
+                } else {
+                    alert('复制失败');
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+                alert('复制失败');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+    }
+
+    async favoriteReply(content, button) {
+        // 提取纯文本内容
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = this.formatContent(content);
+        const plainText = tempDiv.textContent || tempDiv.innerText || '';
+        
+        // 生成简短的标题（取前50个字符）
+        const title = plainText.substring(0, 50) + (plainText.length > 50 ? '...' : '');
+        
+        try {
+            const formData = new FormData();
+            formData.append('command', title);
+            formData.append('description', plainText);
+            formData.append('category', 'AI回复');
+            
+            const response = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to save favorite');
+            }
+            
+            // 成功收藏的视觉反馈
+            this.showFavoriteSuccess(button);
+        } catch (error) {
+            console.error('Error favoriting reply:', error);
+            if (error.message.includes('已存在')) {
+                alert('该回复已存在于收藏夹中');
+            } else {
+                alert('收藏回复失败');
+            }
+        }
+    }
+    
+    showFavoriteSuccess(button) {
+        const originalIcon = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.classList.add('favorited');
+        
+        setTimeout(() => {
+            button.innerHTML = originalIcon;
+            button.classList.remove('favorited');
+        }, 2000);
+    }
+
+    searchFavorites(query) {
+        if (!this.allFavorites) {
+            return;
+        }
+        
+        const filteredFavorites = this.allFavorites.filter(fav => 
+            fav.command.toLowerCase().includes(query.toLowerCase()) ||
+            (fav.description && fav.description.toLowerCase().includes(query.toLowerCase())) ||
+            (fav.category && fav.category.toLowerCase().includes(query.toLowerCase()))
+        );
+        
+        this.renderFavorites(filteredFavorites);
+    }
+
+    getAuthToken() {
+        // 从localStorage获取JWT token
+        return localStorage.getItem('authToken') || '';
+    }
+
+    // 设置认证token
+    setAuthToken(token) {
+        if (token) {
+            localStorage.setItem('authToken', token);
+        } else {
+            localStorage.removeItem('authToken');
+        }
+    }
+
+    // 检查是否已登录
+    isAuthenticated() {
+        return !!this.getAuthToken();
+    }
+
+    // 初始化认证状态
+    async initializeAuth() {
+        // 如果没有JWT token，尝试通过session获取
+        if (!this.getAuthToken()) {
+            try {
+                // 尝试从session获取JWT token
+                const response = await fetch('/api/get-token', {
+                    method: 'POST',
+                    credentials: 'include' // 包含session cookie
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.setAuthToken(data.access_token);
+                    console.log('JWT token obtained from session');
+                } else {
+                    console.log('No valid session for JWT token');
+                }
+            } catch (error) {
+                console.log('Failed to get JWT token from session:', error);
+            }
+        }
     }
 }
 

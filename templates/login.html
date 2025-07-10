@@ -29,7 +29,7 @@
                         </div>
                         {% endif %}
 
-                        <form method="post" action="/login">
+                        <form id="loginForm" method="post" action="/login">
                             <div class="mb-3">
                                 <label for="username" class="form-label">
                                     <i class="fas fa-user"></i>
@@ -52,7 +52,7 @@
                                        required>
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="loginBtn">
                                 <i class="fas fa-sign-in-alt"></i>
                                 登录
                             </button>
@@ -87,6 +87,44 @@
         document.getElementById('password').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 this.form.submit();
+            }
+        });
+
+        // Handle form submission to get JWT token
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loginBtn = document.getElementById('loginBtn');
+            const originalText = loginBtn.innerHTML;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
+            loginBtn.disabled = true;
+            
+            const formData = new FormData(this);
+            
+            try {
+                // 先尝试API登录获取JWT token
+                const apiResponse = await fetch('/api/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    // 存储JWT token
+                    localStorage.setItem('authToken', data.access_token);
+                    // 然后进行传统登录跳转
+                    this.submit();
+                } else {
+                    // 如果API登录失败，直接提交表单
+                    this.submit();
+                }
+            } catch (error) {
+                console.error('登录过程中出错:', error);
+                // 如果出错，直接提交表单
+                this.submit();
+            } finally {
+                loginBtn.innerHTML = originalText;
+                loginBtn.disabled = false;
             }
         });
     </script>

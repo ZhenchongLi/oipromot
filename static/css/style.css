@@ -167,6 +167,35 @@ html, body {
     font-size: 0.75rem;
 }
 
+/* 收藏按钮样式 */
+.favorite-button {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+}
+
+.favorite-button:hover {
+    background: #fff3cd;
+    color: #856404;
+    border-color: #ffecb5;
+}
+
+.favorite-button.favorited {
+    background: #fff3cd;
+    color: #856404;
+    border-color: #ffecb5;
+}
+
+.favorite-button i {
+    font-size: 0.75rem;
+}
+
 .system-message .message-content {
     background: #e3f2fd;
     color: #1565c0;

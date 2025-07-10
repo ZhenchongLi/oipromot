@@ -14,7 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
-from models import DatabaseManager
+from models import DatabaseManager, FavoriteCommand
 from jwt_utils import generate_jwt_token, verify_jwt_token
 
 # Load environment variables
@@ -250,14 +250,126 @@ async def api_logout():
 
 
 @app.get("/api/me")
-async def get_current_user_info(user = Depends(require_auth_jwt)):
-    """Get current user information via JWT."""
+async def get_current_user_info(request: Request, user = Depends(get_current_user_jwt)):
+    """Get current user information via JWT or session."""
+    # 如果JWT认证失败，尝试session认证
+    if not user:
+        if check_auth(request):
+            user = get_current_user(request)
+        else:
+            raise HTTPException(status_code=401, detail="Authentication required")
+    
     return {
         "user_id": user.id,
         "username": user.username,
         "created_at": user.created_at,
         "last_login": user.last_login
     }
+
+
+@app.post("/api/get-token")
+async def get_token_from_session(request: Request):
+    """Get JWT token for session-authenticated user."""
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Session authentication required")
+    
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    token = generate_jwt_token(user.id, user.username)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username
+    }
+
+
+@app.post("/api/favorites")
+async def create_favorite_command(
+    command: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    user = Depends(require_auth_jwt)
+):
+    """Create a new favorite command."""
+    if db_manager.check_favorite_exists(user.id, command):
+        raise HTTPException(status_code=400, detail="命令已存在于收藏夹中")
+    
+    favorite = db_manager.create_favorite_command(user.id, command, description, category)
+    return {
+        "id": favorite.id,
+        "command": favorite.command,
+        "description": favorite.description,
+        "category": favorite.category,
+        "created_at": favorite.created_at,
+        "updated_at": favorite.updated_at
+    }
+
+
+@app.get("/api/favorites")
+async def get_favorite_commands(user = Depends(require_auth_jwt)):
+    """Get all favorite commands for the current user."""
+    favorites = db_manager.get_user_favorite_commands(user.id)
+    return [{
+        "id": fav.id,
+        "command": fav.command,
+        "description": fav.description,
+        "category": fav.category,
+        "created_at": fav.created_at,
+        "updated_at": fav.updated_at
+    } for fav in favorites]
+
+
+@app.get("/api/favorites/{favorite_id}")
+async def get_favorite_command(favorite_id: str, user = Depends(require_auth_jwt)):
+    """Get a specific favorite command."""
+    favorite = db_manager.get_favorite_command_by_id(favorite_id, user.id)
+    if not favorite:
+        raise HTTPException(status_code=404, detail="收藏命令不存在")
+    
+    return {
+        "id": favorite.id,
+        "command": favorite.command,
+        "description": favorite.description,
+        "category": favorite.category,
+        "created_at": favorite.created_at,
+        "updated_at": favorite.updated_at
+    }
+
+
+@app.put("/api/favorites/{favorite_id}")
+async def update_favorite_command(
+    favorite_id: str,
+    command: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    user = Depends(require_auth_jwt)
+):
+    """Update a favorite command."""
+    favorite = db_manager.update_favorite_command(favorite_id, user.id, command, description, category)
+    if not favorite:
+        raise HTTPException(status_code=404, detail="收藏命令不存在")
+    
+    return {
+        "id": favorite.id,
+        "command": favorite.command,
+        "description": favorite.description,
+        "category": favorite.category,
+        "created_at": favorite.created_at,
+        "updated_at": favorite.updated_at
+    }
+
+
+@app.delete("/api/favorites/{favorite_id}")
+async def delete_favorite_command(favorite_id: str, user = Depends(require_auth_jwt)):
+    """Delete a favorite command."""
+    success = db_manager.delete_favorite_command(favorite_id, user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="收藏命令不存在")
+    
+    return {"message": "收藏命令已删除"}
 
 
 @app.websocket("/ws/{session_id}")
