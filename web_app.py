@@ -5,9 +5,9 @@ Web application version of the requirement optimizer using shared core logic.
 
 import orjson
 import uuid
-from typing import Dict
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from typing import Dict, Optional
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Form, Depends, Header
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
 from models import DatabaseManager
+from jwt_utils import generate_jwt_token, verify_jwt_token
 
 # Load environment variables
 load_dotenv()
@@ -156,6 +157,35 @@ def get_current_user(request: Request):
         return db_manager.get_user_by_id(user_id)
     return None
 
+
+def get_current_user_jwt(authorization: Optional[str] = Header(None)):
+    """Get current user from JWT token."""
+    if not authorization:
+        return None
+    
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            return None
+    except ValueError:
+        return None
+    
+    payload = verify_jwt_token(token)
+    if not payload:
+        return None
+    
+    user_id = payload.get("user_id")
+    if user_id:
+        return db_manager.get_user_by_id(user_id)
+    return None
+
+
+def require_auth_jwt(user = Depends(get_current_user_jwt)):
+    """Dependency to require JWT authentication."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
 # Connection manager
 manager = ConnectionManager()
 
@@ -190,11 +220,44 @@ async def post_login(request: Request, username: str = Form(...), password: str 
         })
 
 
+@app.post("/api/login")
+async def api_login(username: str = Form(...), password: str = Form(...)):
+    """Handle API login and return JWT token."""
+    user = db_manager.authenticate_user(username, password)
+    if user:
+        token = generate_jwt_token(user.id, user.username)
+        return JSONResponse({
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "username": user.username
+        })
+    else:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+
 @app.get("/logout")
 async def logout(request: Request):
     """Handle logout."""
     request.session.pop("user_id", None)
     return RedirectResponse(url="/login", status_code=302)
+
+
+@app.post("/api/logout")
+async def api_logout():
+    """Handle API logout (client should discard token)."""
+    return JSONResponse({"message": "注销成功"})
+
+
+@app.get("/api/me")
+async def get_current_user_info(user = Depends(require_auth_jwt)):
+    """Get current user information via JWT."""
+    return {
+        "user_id": user.id,
+        "username": user.username,
+        "created_at": user.created_at,
+        "last_login": user.last_login
+    }
 
 
 @app.websocket("/ws/{session_id}")
