@@ -8,6 +8,10 @@ import argparse
 import signal
 import sys
 from core_optimizer import RequirementOptimizer, SessionManager
+from logger_config import get_logger
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class CLIInterface:
@@ -15,17 +19,21 @@ class CLIInterface:
 
     def __init__(self):
         """Initialize CLI with core optimizer."""
+        logger.info("Initializing CLI interface")
         self.optimizer = RequirementOptimizer()
         self.session = SessionManager(self.optimizer)
+        logger.info("CLI interface initialized successfully")
 
     async def start_session(self, user_input: str):
         """Start a new optimization session and display results."""
+        logger.info(f"Starting new session with input: {user_input[:50]}...")
         result = await self.session.start_session(user_input)
         self._display_result(result)
         return result["type"]
 
     async def handle_feedback(self, feedback: str):
         """Handle user feedback and display results."""
+        logger.info(f"Processing feedback: {feedback[:50]}...")
         result = await self.session.handle_feedback(feedback)
         self._display_result(result)
         return result["type"]
@@ -78,12 +86,15 @@ class CLIInterface:
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully."""
+    logger.info("Received interrupt signal, shutting down CLI")
     print("\n👋 再见!")
     sys.exit(0)
 
 
 async def main():
     """CLI interface for the requirement optimizer with interactive flow."""
+    logger.info("Starting CLI application")
+    
     # Set up signal handler for Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -144,11 +155,13 @@ async def main():
             print("\n再见!")
             break
         except Exception as e:
+            logger.error(f"CLI error: {str(e)}")
             print(f"错误: {e}")
 
 
 def cli_main():
     """Entry point for the CLI script."""
+    logger.info("Starting CLI main entry point")
     asyncio.run(main())
 
 

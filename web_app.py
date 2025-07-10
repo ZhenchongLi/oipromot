@@ -5,6 +5,7 @@ Web application version of the requirement optimizer using shared core logic.
 
 import orjson
 import uuid
+import time
 from typing import Dict, Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Form, Depends, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -16,19 +17,28 @@ from dotenv import load_dotenv
 from core_optimizer import RequirementOptimizer, SessionManager
 from models import DatabaseManager, FavoriteCommand
 from jwt_utils import generate_jwt_token, verify_jwt_token
+from logger_config import get_logger, log_performance
 
 # Load environment variables
 load_dotenv()
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class ProxyHeadersMiddleware(BaseHTTPMiddleware):
     """Middleware to handle reverse proxy headers for correct URL generation."""
     
     async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        client_ip = request.client.host if request.client else "unknown"
+        
         # Handle X-Forwarded-Proto and X-Forwarded-Host headers
         forwarded_proto = request.headers.get("X-Forwarded-Proto")
         forwarded_host = request.headers.get("X-Forwarded-Host")
         forwarded_port = request.headers.get("X-Forwarded-Port")
+        
+        logger.debug(f"Request {request.method} {request.url.path} from {client_ip}")
         
         # Update request scope for correct URL generation
         if forwarded_proto:
@@ -43,8 +53,16 @@ class ProxyHeadersMiddleware(BaseHTTPMiddleware):
                 port = 8888
             request.scope["server"] = (forwarded_host, port)
         
-        response = await call_next(request)
-        return response
+        try:
+            response = await call_next(request)
+            duration = time.time() - start_time
+            log_performance(f"{request.method} {request.url.path}", duration)
+            logger.info(f"Request {request.method} {request.url.path} completed with status {response.status_code} in {duration:.4f}s")
+            return response
+        except Exception as e:
+            duration = time.time() - start_time
+            logger.error(f"Request {request.method} {request.url.path} failed after {duration:.4f}s: {str(e)}")
+            raise
 
 
 class ConnectionManager:
@@ -61,6 +79,7 @@ class ConnectionManager:
         await websocket.accept()
         self.active_connections[session_id] = websocket
         self.sessions[session_id] = SessionManager(self.optimizer)
+        logger.info(f"WebSocket connection established for session {session_id}")
 
     def disconnect(self, session_id: str):
         """Disconnect a WebSocket session."""
@@ -68,6 +87,7 @@ class ConnectionManager:
             del self.active_connections[session_id]
         if session_id in self.sessions:
             del self.sessions[session_id]
+        logger.info(f"WebSocket connection closed for session {session_id}")
 
     async def send_message(self, session_id: str, message: dict):
         """Send message to specific session."""
@@ -76,7 +96,10 @@ class ConnectionManager:
 
     async def handle_message(self, session_id: str, message: dict):
         """Handle incoming messages from clients."""
+        logger.debug(f"Handling message for session {session_id}: {message.get('type')}")
+        
         if session_id not in self.sessions:
+            logger.warning(f"Message received for non-existent session {session_id}")
             await self.send_message(session_id, {
                 "type": "error",
                 "content": "会话不存在"
@@ -92,7 +115,10 @@ class ConnectionManager:
                 await self._handle_user_input(session_id, session, content)
             elif message_type == "new_conversation":
                 await self._handle_new_conversation(session_id, session)
+            else:
+                logger.warning(f"Unknown message type: {message_type}")
         except Exception as e:
+            logger.error(f"Error handling message for session {session_id}: {str(e)}")
             await self.send_message(session_id, {
                 "type": "error",
                 "content": f"处理消息时出错: {str(e)}"
@@ -209,11 +235,16 @@ async def get_login(request: Request):
 @app.post("/login")
 async def post_login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Handle login form submission."""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"Login attempt from {client_ip} for user: {username}")
+    
     user = db_manager.authenticate_user(username, password)
     if user:
         request.session["user_id"] = user.id
+        logger.info(f"User {username} logged in successfully from {client_ip}")
         return RedirectResponse(url="/", status_code=302)
     else:
+        logger.warning(f"Failed login attempt from {client_ip} for user: {username}")
         return templates.TemplateResponse("login.html", {
             "request": request,
             "error": "用户名或密码错误"
@@ -221,11 +252,15 @@ async def post_login(request: Request, username: str = Form(...), password: str 
 
 
 @app.post("/api/login")
-async def api_login(username: str = Form(...), password: str = Form(...)):
+async def api_login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Handle API login and return JWT token."""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"API login attempt from {client_ip} for user: {username}")
+    
     user = db_manager.authenticate_user(username, password)
     if user:
         token = generate_jwt_token(user.id, user.username)
+        logger.info(f"User {username} logged in via API successfully from {client_ip}")
         return JSONResponse({
             "access_token": token,
             "token_type": "bearer",
@@ -233,12 +268,16 @@ async def api_login(username: str = Form(...), password: str = Form(...)):
             "username": user.username
         })
     else:
+        logger.warning(f"Failed API login attempt from {client_ip} for user: {username}")
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
 
 @app.get("/logout")
 async def logout(request: Request):
     """Handle logout."""
+    user_id = request.session.get("user_id")
+    if user_id:
+        logger.info(f"User {user_id} logged out")
     request.session.pop("user_id", None)
     return RedirectResponse(url="/login", status_code=302)
 
@@ -294,10 +333,14 @@ async def create_favorite_command(
     user = Depends(require_auth_jwt)
 ):
     """Create a new favorite command."""
+    logger.info(f"User {user.username} creating favorite command: {command}")
+    
     if db_manager.check_favorite_exists(user.id, command):
+        logger.warning(f"User {user.username} tried to create duplicate favorite: {command}")
         raise HTTPException(status_code=400, detail="命令已存在于收藏夹中")
     
     favorite = db_manager.create_favorite_command(user.id, command, description, category)
+    logger.info(f"User {user.username} created favorite command successfully: {command}")
     return {
         "id": favorite.id,
         "command": favorite.command,
@@ -375,14 +418,27 @@ async def delete_favorite_command(favorite_id: str, user = Depends(require_auth_
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time communication."""
+    logger.info(f"WebSocket connection request for session {session_id}")
+    
     # For WebSocket, we'll accept the connection and handle auth via message
     await manager.connect(websocket, session_id)
     try:
         while True:
             data = await websocket.receive_text()
-            message = orjson.loads(data)
-            await manager.handle_message(session_id, message)
+            try:
+                message = orjson.loads(data)
+                await manager.handle_message(session_id, message)
+            except orjson.JSONDecodeError as e:
+                logger.error(f"Invalid JSON received from session {session_id}: {str(e)}")
+                await manager.send_message(session_id, {
+                    "type": "error",
+                    "content": "无效的消息格式"
+                })
     except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for session {session_id}")
+        manager.disconnect(session_id)
+    except Exception as e:
+        logger.error(f"WebSocket error for session {session_id}: {str(e)}")
         manager.disconnect(session_id)
 
 

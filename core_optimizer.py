@@ -9,9 +9,14 @@ import time
 from typing import Optional, Dict, Any
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
+from logger_config import get_logger, log_performance
+import uuid
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class RequirementOptimizer:
@@ -23,6 +28,8 @@ class RequirementOptimizer:
 
     def __init__(self):
         """Initialize the optimizer with API configuration."""
+        logger.info("Initializing RequirementOptimizer")
+        
         # Unified OpenAI-compatible API configuration
         api_base_url = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
         if not api_base_url.endswith("/v1"):
@@ -31,15 +38,20 @@ class RequirementOptimizer:
         api_key = os.getenv("API_KEY")  # None for Ollama
         self.model = os.getenv("AI_MODEL") or os.getenv("MODEL", "qwen3:1.7b")
 
+        logger.info(f"Using API base URL: {api_base_url}")
+        logger.info(f"Using AI model: {self.model}")
+
         # Initialize OpenAI client with custom base URL
         # For Ollama, we need to provide a dummy key since OpenAI client requires it
         if api_key is None:
             api_key = "sk-no-key-required"  # Ollama ignores the key
+            logger.debug("Using dummy API key for Ollama")
 
         self.client = AsyncOpenAI(
             base_url=api_base_url,
             api_key=api_key
         )
+        logger.info("RequirementOptimizer initialized successfully")
 
     async def optimize_requirement(self, user_input: str) -> Dict[str, Any]:
         """
@@ -51,15 +63,23 @@ class RequirementOptimizer:
         Returns:
             Dict with result, response_time, mode, and optional error
         """
+        logger.info(f"Starting requirement optimization for input: {user_input[:50]}...")
+        start_time = time.time()
+        
         # Get system prompt based on language and thinking mode
         system_prompt = self._get_optimization_prompt(user_input)
 
         # Try the configured OpenAI-compatible API
         result = await self._call_api(system_prompt, user_input)
         if result:
+            duration = time.time() - start_time
+            log_performance("requirement_optimization", duration)
+            logger.info(f"Requirement optimization completed successfully in {duration:.4f}s")
             return result
 
         # Fallback: return cleaned input
+        duration = time.time() - start_time
+        logger.warning(f"Using fallback mode for requirement optimization after {duration:.4f}s")
         return {
             "result": self._simple_clean(user_input),
             "response_time": 0,
@@ -77,6 +97,9 @@ class RequirementOptimizer:
         Returns:
             Dict with refined result, response_time, mode, and optional error
         """
+        logger.info(f"Starting requirement refinement with feedback: {feedback[:50]}...")
+        start_time = time.time()
+        
         # Get refinement prompt based on language
         system_prompt = self._get_refinement_prompt(feedback)
 
@@ -91,9 +114,14 @@ class RequirementOptimizer:
         # Try the configured OpenAI-compatible API
         result = await self._call_api(system_prompt, user_message)
         if result:
+            duration = time.time() - start_time
+            log_performance("requirement_refinement", duration)
+            logger.info(f"Requirement refinement completed successfully in {duration:.4f}s")
             return result
 
         # Fallback: return initial result with feedback note
+        duration = time.time() - start_time
+        logger.warning(f"Using fallback mode for requirement refinement after {duration:.4f}s")
         feedback_note = f"[用户反馈: {feedback}]" if is_chinese else f"[User feedback: {feedback}]"
         return {
             "result": f"{initial_result}\n\n{feedback_note}",
@@ -182,6 +210,7 @@ Please provide the adjusted requirement description:"""
 
     async def _call_api(self, system_prompt: str, user_input: str) -> Optional[Dict[str, Any]]:
         """Call OpenAI-compatible API using OpenAI client with detailed error handling."""
+        logger.debug(f"Making API call to model: {self.model}")
         start_time = time.time()
         try:
             # Build the request parameters
@@ -215,7 +244,7 @@ Please provide the adjusted requirement description:"""
         except Exception as e:
             response_time = time.time() - start_time
             error_info = self._format_error(e, response_time)
-
+            logger.error(f"API call failed after {response_time:.4f}s: {error_info['message']}")
 
             return {
                 "error": error_info["message"],
@@ -321,6 +350,9 @@ class SessionManager:
         self.current_requirement = ""
         self.current_feedback = ""
         self.status = "IDLE"  # IDLE, PROCESSING, WAITING_FEEDBACK, ERROR
+        
+        self.session_id = str(uuid.uuid4())
+        logger.info(f"SessionManager initialized with ID: {self.session_id}")
 
     async def start_session(self, user_input: str) -> Dict[str, Any]:
         """

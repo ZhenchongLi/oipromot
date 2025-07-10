@@ -9,6 +9,10 @@ from sqlmodel import SQLModel, Field, Session, create_engine, select
 from datetime import datetime
 import bcrypt
 from database_config import db_config
+from logger_config import get_logger
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class User(SQLModel, table=True):
@@ -40,12 +44,16 @@ class DatabaseManager:
     
     def __init__(self):
         """Initialize database connection."""
+        logger.info("Initializing DatabaseManager")
         self.engine = create_engine(db_config.database_url)
+        logger.info(f"Database connection established: {db_config.database_url}")
         self.create_tables()
     
     def create_tables(self):
         """Create database tables."""
+        logger.info("Creating database tables")
         SQLModel.metadata.create_all(self.engine)
+        logger.info("Database tables created successfully")
     
     def get_session(self) -> Session:
         """Get database session."""
@@ -53,6 +61,7 @@ class DatabaseManager:
     
     def create_user(self, username: str, password: str) -> User:
         """Create a new user."""
+        logger.info(f"Creating new user: {username}")
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user = User(username=username, hashed_password=hashed_password)
         
@@ -60,10 +69,13 @@ class DatabaseManager:
             session.add(user)
             session.commit()
             session.refresh(user)
+            logger.info(f"User created successfully: {username} (ID: {user.id})")
             return user
     
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """Authenticate user with username and password."""
+        logger.debug(f"Authenticating user: {username}")
+        
         with self.get_session() as session:
             statement = select(User).where(User.username == username, User.is_active == True)
             user = session.exec(statement).first()
@@ -75,6 +87,7 @@ class DatabaseManager:
                 session.add(user)
                 session.commit()
                 session.refresh(user)
+                logger.info(f"User authenticated successfully: {username} (ID: {user.id})")
                 # Create a new detached User object with the data we need
                 return User(
                     id=user.id,
@@ -85,6 +98,7 @@ class DatabaseManager:
                     updated_at=user.updated_at,
                     last_login=user.last_login
                 )
+            logger.warning(f"Authentication failed for user: {username}")
             return None
     
     def get_user_by_username(self, username: str) -> Optional[User]:
@@ -123,6 +137,7 @@ class DatabaseManager:
     
     def create_favorite_command(self, user_id: str, command: str, description: Optional[str] = None, category: Optional[str] = None) -> FavoriteCommand:
         """Create a new favorite command."""
+        logger.info(f"Creating favorite command for user {user_id}: {command}")
         favorite = FavoriteCommand(
             user_id=user_id,
             command=command,
@@ -134,6 +149,7 @@ class DatabaseManager:
             session.add(favorite)
             session.commit()
             session.refresh(favorite)
+            logger.info(f"Favorite command created successfully (ID: {favorite.id})")
             return favorite
     
     def get_user_favorite_commands(self, user_id: str) -> List[FavoriteCommand]:
@@ -205,6 +221,8 @@ class DatabaseManager:
     
     def delete_favorite_command(self, favorite_id: str, user_id: str) -> bool:
         """Delete a favorite command."""
+        logger.info(f"Deleting favorite command {favorite_id} for user {user_id}")
+        
         with self.get_session() as session:
             statement = select(FavoriteCommand).where(
                 FavoriteCommand.id == favorite_id,
@@ -215,7 +233,9 @@ class DatabaseManager:
             if favorite:
                 session.delete(favorite)
                 session.commit()
+                logger.info(f"Favorite command deleted successfully: {favorite_id}")
                 return True
+            logger.warning(f"Favorite command not found for deletion: {favorite_id}")
             return False
     
     def check_favorite_exists(self, user_id: str, command: str) -> bool:

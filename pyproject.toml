@@ -19,6 +19,7 @@ dependencies = [
     "bcrypt>=4.0.0",
     "orjson>=3.9.0",
     "pyjwt>=2.10.1",
+    "loguru>=0.7.0",
 ]
 
 [project.scripts]
