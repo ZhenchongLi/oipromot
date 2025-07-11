@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 需求优化器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        @media (min-width: 768px) {
+            .desktop-login-container {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+            }
+            .desktop-login-content {
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                overflow: hidden;
+                max-width: 900px;
+                margin: 0 auto;
+            }
+            .desktop-login-left {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 60px 40px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+            }
+            .desktop-login-right {
+                padding: 60px 50px;
+            }
+            .desktop-brand {
+                font-size: 2.5rem;
+                margin-bottom: 1rem;
+            }
+            .desktop-subtitle {
+                font-size: 1.1rem;
+                opacity: 0.9;
+                margin-bottom: 2rem;
+            }
+            .desktop-features {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+            .desktop-features li {
+                padding: 0.5rem 0;
+                display: flex;
+                align-items: center;
+            }
+            .desktop-features i {
+                margin-right: 0.5rem;
+                width: 20px;
+            }
+        }
+        @media (max-width: 767px) {
+            .mobile-login-container {
+                background: #f8f9fa;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .mobile-login-card {
+                width: 100%;
+                max-width: 400px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Desktop Layout -->
+    <div class="d-none d-md-flex desktop-login-container align-items-center justify-content-center">
+        <div class="desktop-login-content">
+            <div class="row g-0">
+                <div class="col-md-6 desktop-login-left">
+                    <div>
+                        <div class="desktop-brand">
+                            <i class="fas fa-target mb-3"></i>
+                            <h1 class="h2 mb-0">需求优化器</h1>
+                        </div>
+                        <p class="desktop-subtitle">智能化需求处理与优化平台</p>
+                        <ul class="desktop-features">
+                            <li><i class="fas fa-check-circle"></i> 智能需求分析</li>
+                            <li><i class="fas fa-check-circle"></i> 实时优化建议</li>
+                            <li><i class="fas fa-check-circle"></i> 命令收藏管理</li>
+                            <li><i class="fas fa-check-circle"></i> 安全可靠</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6 desktop-login-right">
+                    <div class="text-center mb-4">
+                        <h3 class="h4 mb-2">欢迎回来</h3>
+                        <p class="text-muted">请登录您的账户</p>
+                    </div>
+                    <div id="login-form-container">
+                        <form hx-post="/api/login"
+                              hx-target="#login-form-container"
+                              hx-swap="innerHTML">
+                            <div class="mb-3">
+                                <label for="username" class="form-label fw-semibold">用户名</label>
+                                <input type="text" 
+                                       class="form-control form-control-lg" 
+                                       id="username" 
+                                       name="username" 
+                                       placeholder="请输入用户名"
+                                       required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="password" class="form-label fw-semibold">密码</label>
+                                <input type="password" 
+                                       class="form-control form-control-lg" 
+                                       id="password" 
+                                       name="password" 
+                                       placeholder="请输入密码"
+                                       required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100 py-3 mb-3">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                登录
+                            </button>
+                        </form>
+                    </div>
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            您的数据安全受到保护
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Layout -->
+    <div class="d-md-none mobile-login-container">
+        <div class="mobile-login-card">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-target me-2"></i>
+                        需求优化器
+                    </h3>
+                    <small class="opacity-75">登录以继续</small>
+                </div>
+                <div class="card-body p-4">
+                    <div id="mobile-login-form-container">
+                        <form hx-post="/api/login"
+                              hx-target="#mobile-login-form-container"
+                              hx-swap="innerHTML">
+                            <div class="mb-3">
+                                <label for="mobile-username" class="form-label">用户名</label>
+                                <input type="text" 
+                                       class="form-control form-control-lg" 
+                                       id="mobile-username" 
+                                       name="username" 
+                                       placeholder="请输入用户名"
+                                       required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="mobile-password" class="form-label">密码</label>
+                                <input type="password" 
+                                       class="form-control form-control-lg" 
+                                       id="mobile-password" 
+                                       name="password" 
+                                       placeholder="请输入密码"
+                                       required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100 py-3">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                登录
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-footer text-center text-muted py-3">
+                    <small>
+                        <i class="fas fa-shield-alt me-1"></i>
+                        安全登录
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

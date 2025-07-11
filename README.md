@@ -358,9 +358,11 @@ uv run config-check
 
 ## 🌐 Web 应用版本
 
-除了命令行版本，我们还提供了基于 FastAPI 和 WebSocket 的 Web 应用版本。
+除了命令行版本，我们还提供了两个Web应用版本：
 
-### 启动 Web 应用
+### 1. 原版 Web 应用（WebSocket 版本）
+
+基于 FastAPI 和 WebSocket 的实时通信版本：
 
 ```bash
 # 安装依赖
@@ -372,9 +374,21 @@ uv run python run_web.py
 uv run web-app
 ```
 
+### 2. HTMX 版本（推荐）
+
+基于 HTMX 的现代化前端版本，更简洁、更高效：
+
+```bash
+# 启动 HTMX 版本
+uv run python run_htmx.py
+# 或者使用脚本命令
+uv run htmx-app
+```
+
 ### 访问应用
-- **Web 界面**: http://localhost:8000 (默认，可通过 WEB_PORT 配置)
-- **API 文档**: http://localhost:8000/docs
+- **原版 Web 界面**: http://localhost:8000 (WebSocket 版本)
+- **HTMX 版本界面**: http://localhost:8001 (HTMX 版本)
+- **API 文档**: http://localhost:8000/docs 或 http://localhost:8001/docs
 
 ### 配置选项
 
@@ -399,9 +413,9 @@ echo "WEB_RELOAD=false" >> .env
 
 ### Web 版本特性
 
+#### 共同特性
 1. **现代化界面**
    - 响应式设计，支持桌面和移动设备
-   - 实时聊天界面
    - 美观的消息气泡和动画效果
    - 用户友好的登录界面
 
@@ -411,35 +425,47 @@ echo "WEB_RELOAD=false" >> .env
    - 自动会话保持
    - 安全的密码加密
 
-3. **实时通信**
-   - WebSocket 连接，实时消息传递
-   - 自动重连机制
-   - 连接状态显示
-
-4. **会话管理**
-   - 独立的会话ID管理
-   - 会话状态跟踪
-   - 支持多用户同时使用
-   - 用户专属的会话隔离
-
-5. **收藏功能**
+3. **收藏功能**
    - 保存常用的需求优化命令
    - 快速重用收藏的需求模板
    - 个人收藏夹管理
    - 一键复制到输入框
 
-6. **增强功能**
+4. **增强功能**
    - 思考模式开关
    - 字符计数显示
    - 响应时间监控
    - 错误处理和重试
 
+#### WebSocket 版本特性
+- **实时通信**: WebSocket 连接，实时消息传递
+- **自动重连**: 自动重连机制和连接状态显示
+- **复杂交互**: 支持更复杂的实时交互模式
+
+#### HTMX 版本特性（推荐）
+- **轻量级**: 无需复杂的 JavaScript 框架
+- **服务器驱动**: 服务器端渲染，更快的页面加载
+- **渐进式增强**: 基于标准 HTML 表单，功能渐进增强
+- **简洁架构**: 更简单的前后端交互模式
+- **高性能**: 最小化的 JavaScript 代码和网络请求
+
 ### 技术栈
+
+#### WebSocket 版本
 - **后端**: FastAPI + WebSocket
 - **前端**: HTML5 + CSS3 + JavaScript (ES6+)
+- **实时通信**: WebSocket
+
+#### HTMX 版本
+- **后端**: FastAPI + REST API
+- **前端**: HTMX + HTML5 + CSS3 + 最小化 JavaScript
+- **交互模式**: HTMX 驱动的服务器端渲染
+
+#### 共同技术
 - **模板引擎**: Jinja2
 - **UI 框架**: Bootstrap 5
 - **图标**: Font Awesome
+- **数据库**: DuckDB + SQLModel
 
 ### 项目架构
 
@@ -449,18 +475,29 @@ oipromot/
 │   ├── RequirementOptimizer # AI 优化器
 │   └── SessionManager      # 会话管理
 ├── simple_cli.py           # 🖥️ CLI 界面层
-├── web_app.py              # 🌐 Web 界面层
-├── run_web.py              # 🚀 Web 启动脚本
+├── web_app.py              # 🌐 WebSocket 版本界面层
+├── htmx_app.py             # 🚀 HTMX 版本界面层（推荐）
+├── run_web.py              # 🚀 WebSocket 版本启动脚本
+├── run_htmx.py             # 🚀 HTMX 版本启动脚本
 ├── models.py               # 📊 数据库模型
 ├── jwt_utils.py            # 🔐 JWT 工具
 ├── database_config.py      # 💾 数据库配置
 ├── test_install.py         # 🧪 安装测试
 ├── config_check.py         # 🔧 配置检查
 ├── pyproject.toml          # 📦 项目配置和依赖
-├── templates/
-│   ├── index.html         # 🎨 主页面模板
-│   └── login.html         # 🔐 登录页面模板
-├── static/
+├── templates/              # 🎨 WebSocket 版本模板
+│   ├── index.html         # 主页面模板
+│   └── login.html         # 登录页面模板
+├── frontend/               # 🎨 HTMX 版本前端
+│   ├── templates/
+│   │   ├── index.html     # HTMX 主页面模板
+│   │   └── login.html     # HTMX 登录页面模板
+│   └── static/
+│       ├── css/
+│       │   └── style.css  # HTMX 样式文件
+│       └── js/
+│           └── app.js     # HTMX 前端逻辑
+├── static/                 # 🎨 WebSocket 版本静态文件
 │   ├── css/
 │   │   └── style.css      # 💄 样式文件
 │   └── js/
@@ -479,8 +516,15 @@ oipromot/
   - `RequirementOptimizer`: 处理 AI API 调用和需求优化
   - `SessionManager`: 管理会话状态和交互流程
 - **`simple_cli.py`**: CLI 界面层，使用核心逻辑
-- **`web_app.py`**: Web 界面层，使用相同的核心逻辑
-- **共享特性**: 两个界面共享完全相同的优化逻辑和功能
+- **`web_app.py`**: WebSocket 版本界面层，使用相同的核心逻辑
+- **`htmx_app.py`**: HTMX 版本界面层（推荐），更简洁的前后端分离
+- **共享特性**: 三个界面共享完全相同的优化逻辑和功能
+
+#### 版本选择建议
+
+- **CLI 版本**: 适合命令行环境和自动化脚本
+- **WebSocket 版本**: 适合需要实时交互的复杂应用
+- **HTMX 版本**: 推荐用于大多数 Web 应用场景，更简洁高效
 
 ## 📝 开发说明
 

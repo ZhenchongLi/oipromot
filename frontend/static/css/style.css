@@ -288,6 +288,20 @@ html, body {
     padding: 0.25rem 0.5rem;
 }
 
+/* HTMX 加载指示器 */
+.htmx-indicator {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.htmx-request .htmx-indicator {
+    opacity: 1;
+}
+
+.htmx-request .htmx-indicator.htmx-indicator-hide {
+    opacity: 0;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .sidebar {

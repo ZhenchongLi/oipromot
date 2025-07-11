@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 交互式需求优化器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="static/css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <div class="sidebar-content">
+                    <h4 class="sidebar-title">
+                        <i class="fas fa-target"></i>
+                        需求优化器
+                    </h4>
+
+
+                    <div class="controls mt-4">
+                        <button class="btn btn-primary btn-sm mb-2" 
+                                hx-post="/api/new-conversation"
+                                hx-target="#chat-messages"
+                                hx-swap="innerHTML">
+                            <i class="fas fa-plus"></i> 新对话
+                        </button>
+                        <button class="btn btn-outline-info btn-sm mb-2" 
+                                hx-get="/api/favorites-modal"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML">
+                            <i class="fas fa-star"></i> 命令收藏
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm mb-2"
+                                hx-post="/api/logout"
+                                hx-confirm="确定要退出登录吗？">
+                            <i class="fas fa-sign-out-alt"></i> 退出登录
+                        </button>
+                    </div>
+
+                    <div class="status-info mt-4">
+                        <small class="text-muted">状态: <span id="status">就绪</span></small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-comments"></i>
+                            交互式需求优化
+                        </h5>
+                        <small class="text-muted">通过API调用进行需求优化</small>
+                    </div>
+
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message system-message">
+                            <div class="message-content">
+                                <i class="fas fa-info-circle"></i>
+                                欢迎使用需求优化器！请输入您的需求，我会帮您转化为清晰的需求描述。
+                                <br><br>
+                                <strong>使用说明：</strong>
+                                <ul>
+                                    <li>输入您的需求，通过API调用优化</li>
+                                    <li>可以提供反馈进行调整</li>
+                                    <li>支持收藏常用命令</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <form hx-post="/api/send-message" 
+                              hx-target="#chat-messages" 
+                              hx-swap="beforeend"
+                              hx-include="[name='message']">
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="message-input"
+                                       name="message"
+                                       placeholder="请输入您的需求..." 
+                                       maxlength="1000"
+                                       required>
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                        <div class="input-help">
+                            <small class="text-muted">
+                                按 Enter 发送 •
+                                <span id="char-count">0</span>/1000 字符 •
+                                <span id="connection-status">就绪</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/app.js"></script>
+</body>
+</html>
