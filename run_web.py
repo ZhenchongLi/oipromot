@@ -8,7 +8,8 @@ from logger_config import get_logger
 
 logger = get_logger(__name__)
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the web application."""
     logger.info("Starting Requirement Optimizer Web Application")
     
     try:
@@ -22,3 +23,6 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Failed to start web application: {str(e)}")
         raise
+
+if __name__ == "__main__":
+    main()
