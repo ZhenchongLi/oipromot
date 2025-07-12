@@ -27,6 +27,29 @@ class User(SQLModel, table=True):
     last_login: Optional[datetime] = Field(default=None)
 
 
+class Conversation(SQLModel, table=True):
+    """Conversation model for storing user chat sessions."""
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    session_id: str = Field(index=True)
+    title: Optional[str] = Field(default=None)
+    status: str = Field(default="active")  # active, completed, archived
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class ConversationMessage(SQLModel, table=True):
+    """Individual messages within a conversation."""
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    conversation_id: str = Field(foreign_key="conversation.id", index=True)
+    role: str = Field(index=True)  # user, assistant, system
+    content: str
+    message_metadata: Optional[str] = Field(default=None)  # JSON string for additional data
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
 class FavoriteCommand(SQLModel, table=True):
     """Favorite command model for users."""
     
@@ -246,3 +269,102 @@ class DatabaseManager:
                 FavoriteCommand.command == command
             )
             return session.exec(statement).first() is not None
+    
+    def create_conversation(self, user_id: str, session_id: str, title: Optional[str] = None) -> Conversation:
+        """Create a new conversation."""
+        logger.info(f"Creating conversation for user {user_id}, session {session_id}")
+        conversation = Conversation(
+            user_id=user_id,
+            session_id=session_id,
+            title=title
+        )
+        
+        with self.get_session() as session:
+            session.add(conversation)
+            session.commit()
+            session.refresh(conversation)
+            logger.info(f"Conversation created successfully (ID: {conversation.id})")
+            return conversation
+    
+    def get_conversation_by_session_id(self, user_id: str, session_id: str) -> Optional[Conversation]:
+        """Get conversation by session ID for a specific user."""
+        with self.get_session() as session:
+            statement = select(Conversation).where(
+                Conversation.user_id == user_id,
+                Conversation.session_id == session_id
+            )
+            conversation = session.exec(statement).first()
+            if conversation:
+                return Conversation(
+                    id=conversation.id,
+                    user_id=conversation.user_id,
+                    session_id=conversation.session_id,
+                    title=conversation.title,
+                    status=conversation.status,
+                    created_at=conversation.created_at,
+                    updated_at=conversation.updated_at
+                )
+            return None
+    
+    def save_message(self, conversation_id: str, role: str, content: str, message_metadata: Optional[str] = None) -> ConversationMessage:
+        """Save a message to a conversation."""
+        logger.debug(f"Saving {role} message to conversation {conversation_id}")
+        message = ConversationMessage(
+            conversation_id=conversation_id,
+            role=role,
+            content=content,
+            message_metadata=message_metadata
+        )
+        
+        with self.get_session() as session:
+            session.add(message)
+            session.commit()
+            session.refresh(message)
+            return message
+    
+    def get_conversation_messages(self, conversation_id: str) -> List[ConversationMessage]:
+        """Get all messages for a conversation."""
+        with self.get_session() as session:
+            statement = select(ConversationMessage).where(
+                ConversationMessage.conversation_id == conversation_id
+            ).order_by(ConversationMessage.created_at)
+            messages = session.exec(statement).all()
+            return [ConversationMessage(
+                id=msg.id,
+                conversation_id=msg.conversation_id,
+                role=msg.role,
+                content=msg.content,
+                message_metadata=msg.message_metadata,
+                created_at=msg.created_at
+            ) for msg in messages]
+    
+    def get_user_conversations(self, user_id: str, limit: int = 50) -> List[Conversation]:
+        """Get all conversations for a user."""
+        with self.get_session() as session:
+            statement = select(Conversation).where(
+                Conversation.user_id == user_id
+            ).order_by(Conversation.updated_at.desc()).limit(limit)
+            conversations = session.exec(statement).all()
+            return [Conversation(
+                id=conv.id,
+                user_id=conv.user_id,
+                session_id=conv.session_id,
+                title=conv.title,
+                status=conv.status,
+                created_at=conv.created_at,
+                updated_at=conv.updated_at
+            ) for conv in conversations]
+    
+    def update_conversation_title(self, conversation_id: str, title: str) -> bool:
+        """Update conversation title."""
+        with self.get_session() as session:
+            statement = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = session.exec(statement).first()
+            
+            if conversation:
+                conversation.title = title
+                conversation.updated_at = datetime.now()
+                session.add(conversation)
+                session.commit()
+                return True
+            return False

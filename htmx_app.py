@@ -76,7 +76,7 @@ class HTMXOptimizer:
             self.sessions[session_id] = SessionManager(self.optimizer)
         return self.sessions[session_id]
     
-    async def process_message(self, session_id: str, message: str) -> dict:
+    async def process_message(self, session_id: str, message: str, user_id: str = None) -> dict:
         """Process a user message and return the response."""
         session = self.get_session(session_id)
         
@@ -89,6 +89,10 @@ class HTMXOptimizer:
                 # Feedback
                 result = await session.handle_feedback(message)
             
+            # Save conversation if user_id is provided
+            if user_id and result.get("type") in ["ai_response", "ai_response_refined"]:
+                self._save_conversation_message(user_id, session_id, message, result)
+            
             return result
         except Exception as e:
             logger.error(f"Error processing message for session {session_id}: {str(e)}")
@@ -98,6 +102,45 @@ class HTMXOptimizer:
                 "response_time": 0,
                 "error_type": "ProcessingError"
             }
+    
+    def _save_conversation_message(self, user_id: str, session_id: str, user_message: str, ai_response: dict):
+        """Save conversation messages to database."""
+        try:
+            from models import DatabaseManager
+            db_manager = DatabaseManager()
+            
+            # Get or create conversation
+            conversation = db_manager.get_conversation_by_session_id(user_id, session_id)
+            if not conversation:
+                # Generate title from first user message (truncated)
+                title = user_message[:50] + "..." if len(user_message) > 50 else user_message
+                conversation = db_manager.create_conversation(user_id, session_id, title)
+            
+            # Save user message
+            db_manager.save_message(
+                conversation.id,
+                "user",
+                user_message
+            )
+            
+            # Save AI response with metadata
+            import json
+            metadata = {
+                "response_time": ai_response.get("response_time", 0),
+                "mode": ai_response.get("mode", ""),
+                "type": ai_response.get("type")
+            }
+            
+            db_manager.save_message(
+                conversation.id,
+                "assistant",
+                ai_response.get("content", ""),
+                json.dumps(metadata)
+            )
+            
+            logger.info(f"Saved conversation messages for session {session_id}")
+        except Exception as e:
+            logger.error(f"Failed to save conversation: {str(e)}")
     
     def new_conversation(self, session_id: str) -> dict:
         """Start a new conversation."""
@@ -294,7 +337,7 @@ async def send_message(request: Request, message: str = Form(...)):
         request.session["htmx_session_id"] = session_id
     
     # Process the message
-    response = await htmx_optimizer.process_message(session_id, message)
+    response = await htmx_optimizer.process_message(session_id, message, user.id)
     
     # Create HTML response based on the response type
     if response["type"] == "ai_response" or response["type"] == "ai_response_refined":
@@ -577,6 +620,148 @@ async def delete_favorite_command(request: Request, favorite_id: str):
         )
     
     return HTMLResponse(content="")
+
+
+@app.get("/api/conversations")
+async def get_conversations(request: Request):
+    """Get conversation history for the current user."""
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    conversations = db_manager.get_user_conversations(user.id)
+    
+    conversations_html = ""
+    if conversations:
+        for conv in conversations:
+            # Get first few messages for preview
+            messages = db_manager.get_conversation_messages(conv.id)
+            preview = ""
+            if messages:
+                preview = messages[0].content[:100] + "..." if len(messages[0].content) > 100 else messages[0].content
+            
+            conversations_html += f"""
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">{conv.title or 'Untitled Conversation'}</h6>
+                    <p class="card-text text-muted small">{preview}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{conv.created_at.strftime('%Y-%m-%d %H:%M')}</small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-primary btn-sm" 
+                                    hx-get="/api/conversations/{conv.id}/messages"
+                                    hx-target="#conversation-detail"
+                                    hx-swap="innerHTML">
+                                <i class="fas fa-eye"></i> 查看
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """
+    else:
+        conversations_html = '<div class="alert alert-info">还没有对话记录</div>'
+    
+    return HTMLResponse(content=f"""
+    <div class="modal fade show" id="conversationsModal" tabindex="-1" style="display: block;">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-comments"></i> 对话历史
+                    </h5>
+                    <button type="button" class="btn-close" onclick="document.getElementById('modal-container').innerHTML = ''"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6>对话列表</h6>
+                            <div id="conversations-list" style="max-height: 400px; overflow-y: auto;">
+                                {conversations_html}
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div id="conversation-detail">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-arrow-left"></i>
+                                    选择左侧对话查看详情
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+    """)
+
+
+@app.get("/api/conversations/{conversation_id}/messages")
+async def get_conversation_messages(request: Request, conversation_id: str):
+    """Get messages for a specific conversation."""
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    messages = db_manager.get_conversation_messages(conversation_id)
+    
+    messages_html = ""
+    for msg in messages:
+        role_class = {
+            "user": "user-message",
+            "assistant": "ai-message", 
+            "system": "system-message"
+        }.get(msg.role, "system-message")
+        
+        role_icon = {
+            "user": "fas fa-user",
+            "assistant": "fas fa-robot",
+            "system": "fas fa-info-circle"
+        }.get(msg.role, "fas fa-info-circle")
+        
+        # Parse metadata if available
+        metadata_info = ""
+        if msg.message_metadata:
+            try:
+                import json
+                metadata = json.loads(msg.message_metadata)
+                if metadata.get("response_time"):
+                    metadata_info = f'<small class="text-muted">⏱️ {metadata["response_time"]:.2f}s</small>'
+            except:
+                pass
+        
+        messages_html += f"""
+        <div class="message {role_class} mb-3">
+            <div class="d-flex">
+                <div class="me-2">
+                    <i class="{role_icon}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="message-content">{msg.content.replace(chr(10), '<br>')}</div>
+                    <div class="message-meta mt-1">
+                        <small class="text-muted">{msg.created_at.strftime('%H:%M:%S')}</small>
+                        {metadata_info}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+    
+    return HTMLResponse(content=f"""
+    <div>
+        <h6>对话详情</h6>
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+            {messages_html}
+        </div>
+    </div>
+    """)
 
 
 if __name__ == "__main__":

@@ -34,6 +34,12 @@
                                 hx-swap="innerHTML">
                             <i class="fas fa-star"></i> 命令收藏
                         </button>
+                        <button class="btn btn-outline-success btn-sm mb-2" 
+                                hx-get="/api/conversations"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML">
+                            <i class="fas fa-history"></i> 对话历史
+                        </button>
                         <button class="btn btn-outline-secondary btn-sm mb-2"
                                 hx-post="/api/logout"
                                 hx-confirm="确定要退出登录吗？">
